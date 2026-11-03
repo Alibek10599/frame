@@ -1,0 +1,378 @@
+{
+  "edges": [
+    {
+      "from": "fieldwork/action/complete_task",
+      "role": "checks_revision",
+      "to": "fieldwork/action/complete_task/input/revision"
+    },
+    {
+      "from": "fieldwork/action/complete_task",
+      "role": "compiled_into",
+      "to": "fieldwork/artifact/backend"
+    },
+    {
+      "from": "fieldwork/action/complete_task",
+      "role": "has_assignment",
+      "to": "fieldwork/action/complete_task/set/completed"
+    },
+    {
+      "from": "fieldwork/action/complete_task",
+      "role": "has_input",
+      "to": "fieldwork/action/complete_task/input/id"
+    },
+    {
+      "from": "fieldwork/action/complete_task",
+      "role": "has_input",
+      "to": "fieldwork/action/complete_task/input/revision"
+    },
+    {
+      "from": "fieldwork/action/complete_task",
+      "role": "scoped_by",
+      "to": "fieldwork/entity/Task/field/owner"
+    },
+    {
+      "from": "fieldwork/action/complete_task",
+      "role": "selects_by",
+      "to": "fieldwork/action/complete_task/input/id"
+    },
+    {
+      "from": "fieldwork/action/complete_task",
+      "role": "writes",
+      "to": "fieldwork/entity/Task"
+    },
+    {
+      "from": "fieldwork/action/complete_task/set/completed",
+      "role": "assigns",
+      "to": "fieldwork/entity/Task/field/completed"
+    },
+    {
+      "from": "fieldwork/action/create_task",
+      "role": "compiled_into",
+      "to": "fieldwork/artifact/backend"
+    },
+    {
+      "from": "fieldwork/action/create_task",
+      "role": "has_assignment",
+      "to": "fieldwork/action/create_task/set/owner"
+    },
+    {
+      "from": "fieldwork/action/create_task",
+      "role": "has_assignment",
+      "to": "fieldwork/action/create_task/set/title"
+    },
+    {
+      "from": "fieldwork/action/create_task",
+      "role": "has_input",
+      "to": "fieldwork/action/create_task/input/title"
+    },
+    {
+      "from": "fieldwork/action/create_task",
+      "role": "scoped_by",
+      "to": "fieldwork/entity/Task/field/owner"
+    },
+    {
+      "from": "fieldwork/action/create_task",
+      "role": "writes",
+      "to": "fieldwork/entity/Task"
+    },
+    {
+      "from": "fieldwork/action/create_task/set/owner",
+      "role": "assigns",
+      "to": "fieldwork/entity/Task/field/owner"
+    },
+    {
+      "from": "fieldwork/action/create_task/set/title",
+      "role": "assigns",
+      "to": "fieldwork/entity/Task/field/title"
+    },
+    {
+      "from": "fieldwork/action/create_task/set/title",
+      "role": "reads_input",
+      "to": "fieldwork/action/create_task/input/title"
+    },
+    {
+      "from": "fieldwork/action/list_tasks",
+      "role": "compiled_into",
+      "to": "fieldwork/artifact/backend"
+    },
+    {
+      "from": "fieldwork/action/list_tasks",
+      "role": "reads",
+      "to": "fieldwork/entity/Task"
+    },
+    {
+      "from": "fieldwork/action/list_tasks",
+      "role": "scoped_by",
+      "to": "fieldwork/entity/Task/field/owner"
+    },
+    {
+      "from": "fieldwork/entity/Task",
+      "role": "has_field",
+      "to": "fieldwork/entity/Task/field/completed"
+    },
+    {
+      "from": "fieldwork/entity/Task",
+      "role": "has_field",
+      "to": "fieldwork/entity/Task/field/id"
+    },
+    {
+      "from": "fieldwork/entity/Task",
+      "role": "has_field",
+      "to": "fieldwork/entity/Task/field/owner"
+    },
+    {
+      "from": "fieldwork/entity/Task",
+      "role": "has_field",
+      "to": "fieldwork/entity/Task/field/revision"
+    },
+    {
+      "from": "fieldwork/entity/Task",
+      "role": "has_field",
+      "to": "fieldwork/entity/Task/field/title"
+    },
+    {
+      "from": "fieldwork/entity/Task",
+      "role": "owned_by",
+      "to": "fieldwork/entity/Task/field/owner"
+    },
+    {
+      "from": "fieldwork/entity/Task",
+      "role": "stored_in",
+      "to": "fieldwork/artifact/database"
+    },
+    {
+      "from": "fieldwork/identity/development",
+      "role": "authenticates",
+      "to": "fieldwork/action/complete_task"
+    },
+    {
+      "from": "fieldwork/identity/development",
+      "role": "authenticates",
+      "to": "fieldwork/action/create_task"
+    },
+    {
+      "from": "fieldwork/identity/development",
+      "role": "authenticates",
+      "to": "fieldwork/action/list_tasks"
+    },
+    {
+      "from": "fieldwork/identity/development",
+      "role": "configures",
+      "to": "fieldwork/artifact/backend"
+    },
+    {
+      "from": "fieldwork/recovery/backend_process",
+      "role": "recovers",
+      "to": "fieldwork/artifact/backend"
+    },
+    {
+      "from": "fieldwork/repair/local_candidate",
+      "role": "may_edit",
+      "to": "fieldwork/action/complete_task"
+    },
+    {
+      "from": "fieldwork/runtime/local",
+      "role": "configures",
+      "to": "fieldwork/artifact/backend"
+    },
+    {
+      "from": "fieldwork/runtime/local",
+      "role": "configures",
+      "to": "fieldwork/artifact/database"
+    },
+    {
+      "from": "fieldwork/runtime/local",
+      "role": "configures",
+      "to": "fieldwork/artifact/web"
+    },
+    {
+      "from": "fieldwork/screen/tasks",
+      "role": "compiled_into",
+      "to": "fieldwork/artifact/web"
+    },
+    {
+      "from": "fieldwork/screen/tasks",
+      "role": "contains",
+      "to": "fieldwork/screen/tasks/form/add_task"
+    },
+    {
+      "from": "fieldwork/screen/tasks",
+      "role": "contains",
+      "to": "fieldwork/screen/tasks/list/task_list"
+    },
+    {
+      "from": "fieldwork/screen/tasks",
+      "role": "queries",
+      "to": "fieldwork/action/list_tasks"
+    },
+    {
+      "from": "fieldwork/screen/tasks/form/add_task",
+      "role": "contains",
+      "to": "fieldwork/screen/tasks/form/add_task/input/title"
+    },
+    {
+      "from": "fieldwork/screen/tasks/form/add_task",
+      "role": "submits",
+      "to": "fieldwork/action/create_task"
+    },
+    {
+      "from": "fieldwork/screen/tasks/form/add_task/input/title",
+      "role": "controls",
+      "to": "fieldwork/action/create_task/input/title"
+    },
+    {
+      "from": "fieldwork/screen/tasks/list/task_list",
+      "role": "contains",
+      "to": "fieldwork/screen/tasks/list/task_list/button/complete"
+    },
+    {
+      "from": "fieldwork/screen/tasks/list/task_list",
+      "role": "displays",
+      "to": "fieldwork/entity/Task/field/completed"
+    },
+    {
+      "from": "fieldwork/screen/tasks/list/task_list",
+      "role": "displays",
+      "to": "fieldwork/entity/Task/field/title"
+    },
+    {
+      "from": "fieldwork/screen/tasks/list/task_list/button/complete",
+      "role": "binds",
+      "to": "fieldwork/action/complete_task/input/id"
+    },
+    {
+      "from": "fieldwork/screen/tasks/list/task_list/button/complete",
+      "role": "binds",
+      "to": "fieldwork/action/complete_task/input/revision"
+    },
+    {
+      "from": "fieldwork/screen/tasks/list/task_list/button/complete",
+      "role": "invokes",
+      "to": "fieldwork/action/complete_task"
+    },
+    {
+      "from": "fieldwork/screen/tasks/list/task_list/button/complete",
+      "role": "passes",
+      "to": "fieldwork/entity/Task/field/id"
+    },
+    {
+      "from": "fieldwork/screen/tasks/list/task_list/button/complete",
+      "role": "passes",
+      "to": "fieldwork/entity/Task/field/revision"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "fieldwork",
+      "kind": "app"
+    },
+    {
+      "id": "fieldwork/action/complete_task",
+      "kind": "action"
+    },
+    {
+      "id": "fieldwork/action/complete_task/input/id",
+      "kind": "input"
+    },
+    {
+      "id": "fieldwork/action/complete_task/input/revision",
+      "kind": "input"
+    },
+    {
+      "id": "fieldwork/action/complete_task/set/completed",
+      "kind": "assignment"
+    },
+    {
+      "id": "fieldwork/action/create_task",
+      "kind": "action"
+    },
+    {
+      "id": "fieldwork/action/create_task/input/title",
+      "kind": "input"
+    },
+    {
+      "id": "fieldwork/action/create_task/set/owner",
+      "kind": "assignment"
+    },
+    {
+      "id": "fieldwork/action/create_task/set/title",
+      "kind": "assignment"
+    },
+    {
+      "id": "fieldwork/action/list_tasks",
+      "kind": "action"
+    },
+    {
+      "id": "fieldwork/artifact/backend",
+      "kind": "artifact"
+    },
+    {
+      "id": "fieldwork/artifact/database",
+      "kind": "artifact"
+    },
+    {
+      "id": "fieldwork/artifact/web",
+      "kind": "artifact"
+    },
+    {
+      "id": "fieldwork/entity/Task",
+      "kind": "entity"
+    },
+    {
+      "id": "fieldwork/entity/Task/field/completed",
+      "kind": "field"
+    },
+    {
+      "id": "fieldwork/entity/Task/field/id",
+      "kind": "field"
+    },
+    {
+      "id": "fieldwork/entity/Task/field/owner",
+      "kind": "field"
+    },
+    {
+      "id": "fieldwork/entity/Task/field/revision",
+      "kind": "field"
+    },
+    {
+      "id": "fieldwork/entity/Task/field/title",
+      "kind": "field"
+    },
+    {
+      "id": "fieldwork/identity/development",
+      "kind": "identity"
+    },
+    {
+      "id": "fieldwork/recovery/backend_process",
+      "kind": "recovery"
+    },
+    {
+      "id": "fieldwork/repair/local_candidate",
+      "kind": "repair"
+    },
+    {
+      "id": "fieldwork/runtime/local",
+      "kind": "runtime"
+    },
+    {
+      "id": "fieldwork/screen/tasks",
+      "kind": "screen"
+    },
+    {
+      "id": "fieldwork/screen/tasks/form/add_task",
+      "kind": "form"
+    },
+    {
+      "id": "fieldwork/screen/tasks/form/add_task/input/title",
+      "kind": "control"
+    },
+    {
+      "id": "fieldwork/screen/tasks/list/task_list",
+      "kind": "list"
+    },
+    {
+      "id": "fieldwork/screen/tasks/list/task_list/button/complete",
+      "kind": "button"
+    }
+  ]
+}

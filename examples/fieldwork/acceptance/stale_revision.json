@@ -1,0 +1,9 @@
+{
+  "name": "completing with a stale revision is a conflict, not an overwrite",
+  "covers": ["fieldwork/action/complete_task"],
+  "steps": [
+    { "as": "a", "action": "create_task", "input": { "title": "Twice" }, "expect": { "status": 200 }, "save": "task" },
+    { "as": "a", "action": "complete_task", "input": { "id": "$task.id", "revision": 1 }, "expect": { "status": 200, "data": { "revision": 2 } } },
+    { "as": "a", "action": "complete_task", "input": { "id": "$task.id", "revision": 1 }, "expect": { "status": 409, "error": "REVISION_CONFLICT" } }
+  ]
+}

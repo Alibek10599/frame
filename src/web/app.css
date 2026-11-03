@@ -1,0 +1,86 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+body {
+  margin: 0 auto;
+  max-width: 42rem;
+  padding: 1rem;
+}
+#dev-bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.875rem;
+  padding: 0.5rem;
+  border: 1px dashed currentColor;
+  margin-bottom: 1rem;
+}
+#dev-bar:empty {
+  display: none;
+}
+.dev-note {
+  font-weight: 600;
+}
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+  margin-bottom: 1.5rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 16rem;
+}
+.field-error,
+.alert,
+.error {
+  color: #b00020;
+}
+input[aria-invalid="true"] {
+  outline: 2px solid #b00020;
+}
+input,
+button,
+select {
+  font: inherit;
+  padding: 0.375rem 0.625rem;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+.alert:focus {
+  outline: 3px solid #1a73e8;
+  outline-offset: 2px;
+}
+button[disabled] {
+  opacity: 0.6;
+}
+ul {
+  list-style: none;
+  padding: 0;
+}
+li {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #8884;
+  padding: 0.5rem 0;
+}
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.75rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+dt {
+  font-weight: 600;
+}
+dd {
+  margin: 0;
+}

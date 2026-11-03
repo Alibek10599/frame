@@ -1,0 +1,10 @@
+{
+  "name": "another user can neither see nor complete a task",
+  "covers": ["fieldwork/action/list_tasks", "fieldwork/action/complete_task", "fieldwork/identity/development"],
+  "steps": [
+    { "as": "a", "action": "create_task", "input": { "title": "Private" }, "expect": { "status": 200 }, "save": "task" },
+    { "as": "b", "action": "list_tasks", "input": {}, "expect": { "status": 200, "data": { "items": [], "next_cursor": null } } },
+    { "as": "b", "action": "complete_task", "input": { "id": "$task.id", "revision": "$task.revision" }, "expect": { "status": 404, "error": "NOT_FOUND" } },
+    { "as": "a", "action": "list_tasks", "input": {}, "expect": { "status": 200, "data": { "items": [{ "id": "$task.id", "completed": false }] } } }
+  ]
+}

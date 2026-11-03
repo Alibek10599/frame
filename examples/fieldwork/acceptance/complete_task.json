@@ -1,0 +1,9 @@
+{
+  "name": "completing a task marks it completed and bumps its revision",
+  "covers": ["fieldwork/action/complete_task", "fieldwork/action/create_task"],
+  "steps": [
+    { "as": "a", "action": "create_task", "input": { "title": "Write the report" }, "expect": { "status": 200, "data": { "completed": false, "revision": 1 } }, "save": "task" },
+    { "as": "a", "action": "complete_task", "input": { "id": "$task.id", "revision": "$task.revision" }, "expect": { "status": 200, "data": { "id": "$task.id", "completed": true, "revision": 2 } } },
+    { "as": "a", "action": "list_tasks", "input": {}, "expect": { "status": 200, "data": { "items": [{ "id": "$task.id", "completed": true }] } } }
+  ]
+}
