@@ -334,3 +334,14 @@ fn macos_metadata_files_are_ignored_by_project_discovery() {
     let tests = frame::testrun::load_protected(&p.dir).unwrap();
     assert_eq!(tests.len(), 3);
 }
+
+#[test]
+fn relative_project_paths_resolve_to_absolute_directories() {
+    let p = write_project("relative", FIXTURE);
+    let cwd = std::env::current_dir().unwrap();
+    let rel = p.dir.strip_prefix(&cwd).unwrap().to_path_buf();
+    assert!(rel.is_relative());
+    let located = frame::Project::locate(Some(rel)).unwrap();
+    assert!(located.dir.is_absolute());
+    assert_eq!(located.dir, p.dir);
+}

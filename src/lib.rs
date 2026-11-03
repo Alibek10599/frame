@@ -34,6 +34,11 @@ pub struct Project {
 
 impl Project {
     pub fn locate(path: Option<PathBuf>) -> Result<Project, String> {
+        let path = path
+            .map(|p| {
+                std::path::absolute(&p).map_err(|e| format!("cannot resolve {}: {e}", p.display()))
+            })
+            .transpose()?;
         let dir = match path {
             Some(p) if p.is_file() => {
                 let dir = p.parent().map(Path::to_path_buf).unwrap_or_default();
