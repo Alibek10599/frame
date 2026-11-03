@@ -8,21 +8,31 @@ This is a local vertical slice. It is not a production platform, and it makes no
 
 ## Requirements
 
-- Rust via rustup. `rust-toolchain.toml` pins 1.97.1, and rustup installs it on first use.
+- Rust via rustup. Generated apps pin Rust 1.97.1 through `rust-toolchain.toml`, and rustup installs it on first use.
 - macOS for isolated repair, which uses Seatbelt (`/usr/bin/sandbox-exec`). On other platforms repair runs proposal and static validation only and reports `SANDBOX_UNAVAILABLE`.
 - Network access for the first `frame build`, which downloads crates once. Later builds work offline.
 - Optional: Node 22+ and a Chromium (Playwright's headless shell or Chrome) for the browser journey test, and `c++` for the C++ kernel benchmark.
 
-## Install from source
+## Install
 
-There are no prebuilt binaries yet. From a checkout:
+Frame compiles apps with Cargo, so install Rust with [rustup](https://rustup.rs) first.
+
+Prebuilt binaries for macOS (Apple silicon) and Linux (x86_64 and arm64) are attached to each [release](https://github.com/Alibek10599/frame/releases/latest). On macOS:
 
 ```sh
-cargo build --release                 # builds the CLI at target/release/frame
-export PATH="$PWD/target/release:$PATH"
+curl -fsSL https://github.com/Alibek10599/frame/releases/latest/download/frame-aarch64-apple-darwin.tar.gz | tar -xz
+sudo install frame-aarch64-apple-darwin/frame /usr/local/bin/frame
 ```
 
-Generated apps depend on `runtime/` in this checkout through a path dependency, so keep the checkout in place after building. For the same reason the crates are not published to crates.io yet ([D4](docs/decisions.md)).
+On Linux, use `frame-x86_64-unknown-linux-gnu` or `frame-aarch64-unknown-linux-gnu` instead. Each archive has a `.sha256` file next to it.
+
+To build from source instead:
+
+```sh
+cargo install --locked --git https://github.com/Alibek10599/frame frame
+```
+
+From a checkout, `cargo build --release` puts the CLI at `target/release/frame`.
 
 ## Run the reference app
 

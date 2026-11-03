@@ -4,6 +4,8 @@ All notable changes to Frame are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-03
+
 ### Added
 
 - `.frame` parser with byte spans and comments, a comment-preserving formatter, and semantic checks with stable diagnostic codes.
@@ -14,4 +16,8 @@ All notable changes to Frame are documented here. The format follows [Keep a Cha
 - A supervisor with its own control database, persisted restart budgets, reconciliation, and redacted incident records.
 - An isolated repair pipeline in the macOS Seatbelt sandbox with a deterministic fixture proposer, explicit local apply, and version-compatible precedents.
 - `frame bench` with a hand-written baseline backend and a C++ kernel comparison.
+- Prebuilt `frame` binaries for macOS (Apple silicon) and Linux (x86_64 and arm64). The CLI bundles `frame-runtime`, so generated apps do not need a source checkout.
 - CLI commands: `init`, `fmt`, `check`, `build`, `dev`, `test`, `context`, `diff`, `status`, `incidents`, `repair`, `apply-repair` and `bench`. `plan` and `release` fail as unsupported.
+
+[Unreleased]: https://github.com/Alibek10599/frame/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Alibek10599/frame/releases/tag/v0.1.0

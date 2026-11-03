@@ -8,6 +8,7 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.97"
 publish = false
+repository = "https://github.com/Alibek10599/frame"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -24,6 +25,7 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+repository.workspace = true
 description = "Compiler and local runtime for the Frame system language"
 readme = "README.md"
 keywords = ["language", "compiler", "codegen", "web"]
