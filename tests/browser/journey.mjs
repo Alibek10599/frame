@@ -7,11 +7,13 @@ const [url, chromium] = process.argv.slice(2);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const profile = mkdtempSync(join(tmpdir(), "frame-journey-"));
-const browser = spawn(
-  chromium,
-  ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "about:blank"],
-  { stdio: ["ignore", "ignore", "ignore"] },
-);
+const flags = ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check", "--disable-gpu"];
+if (process.env.CI && process.platform === "linux") flags.push("--no-sandbox");
+const browser = spawn(chromium, [...flags, "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
+let browserLog = "";
+browser.stderr.on("data", (d) => {
+  browserLog = (browserLog + d).slice(-4000);
+});
 
 async function waitFor(fn, label, ms = 10000) {
   const start = Date.now();
@@ -20,7 +22,7 @@ async function waitFor(fn, label, ms = 10000) {
     if (v) return v;
     await sleep(40);
   }
-  throw new Error("timed out waiting for " + label);
+  throw new Error("timed out waiting for " + label + (browserLog ? "\nbrowser stderr:\n" + browserLog.trim() : ""));
 }
 
 function check(name, ok, detail) {
