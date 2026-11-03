@@ -20,11 +20,11 @@ Acceptance impact: items 8 and 9 use them as the unchanged protected suite.
 
 Acceptance impact: none.
 
-## D4 Generated apps depend on this checkout's `runtime/` by absolute path
+## D4 Generated apps build against a bundled copy of the runtime
 
-The runtime is the versioned interface (`frame-runtime/0.1`). The path is not part of any semantic hash. Moving the checkout requires `frame build` again.
+The CLI embeds the `frame-runtime` manifest and source and writes them to `.frame/generated/runtime/`, next to the generated app, which depends on it as `path = "../runtime"`. The generated tree is position-independent, a released `frame` binary needs no source checkout, and the dependency lock embedded from this workspace still pins every crate. The runtime manifest is standalone (no workspace inheritance), so it can be copied verbatim. Benchmarks build the baseline and the kernel the same way, under `.frame/bench/crates/`. Unchanged files are not rewritten, so Cargo does not rebuild them.
 
-Acceptance impact: none. Recorded under limitations.
+Acceptance impact: none. Earlier builds referenced the checkout's `runtime/` by absolute path.
 
 ## D5 `@actor.id` is accepted only as the owner assignment of an insert
 

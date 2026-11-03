@@ -9,7 +9,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-pub const RUNTIME_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/runtime");
 pub const WORKSPACE_LOCK: &str = include_str!("../Cargo.lock");
 pub const TOOLCHAIN_PIN: &str = include_str!("../rust-toolchain.toml");
 
@@ -60,7 +59,7 @@ pub fn toolchain_hash() -> String {
 
 pub fn generate(out: &Path, c: &Compiled, package: &str) -> Result<codegen::Generated, String> {
     artifacts::write_ir(out, c)?;
-    let generated = codegen::generate(c, RUNTIME_PATH, package);
+    let generated = codegen::generate(c, package);
     artifacts::ensure_real_dir(&out.join("generated"))?;
     for (rel, contents) in &generated.files {
         write_file(&out.join("generated"), rel, contents)?;

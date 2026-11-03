@@ -599,7 +599,10 @@ pub fn index_html(app: &App, source_sha256: &str) -> String {
     )
 }
 
-pub fn generate(c: &Compiled, runtime_path: &str, package: &str) -> Generated {
+pub const RUNTIME_MANIFEST: &str = include_str!("../runtime/Cargo.toml");
+pub const RUNTIME_SOURCE: &str = include_str!("../runtime/src/lib.rs");
+
+pub fn generate(c: &Compiled, package: &str) -> Generated {
     let (stmts, fingerprint) = schema(&c.app);
     let (main_rs, regions) = rust_main(c, &stmts, &fingerprint);
     let mut files = BTreeMap::new();
@@ -609,9 +612,11 @@ pub fn generate(c: &Compiled, runtime_path: &str, package: &str) -> Generated {
         format!(
             "[package]\nname = {}\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[dependencies]\nframe-runtime = {{ path = {} }}\n\n[profile.release]\ncodegen-units = 16\n\n[workspace]\n",
             toml_str(package),
-            toml_str(runtime_path)
+            toml_str("../runtime")
         ),
     );
+    files.insert("runtime/Cargo.toml".into(), RUNTIME_MANIFEST.to_string());
+    files.insert("runtime/src/lib.rs".into(), RUNTIME_SOURCE.to_string());
     files.insert(
         "app/rust-toolchain.toml".into(),
         include_str!("../rust-toolchain.toml").to_string(),

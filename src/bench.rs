@@ -1,6 +1,6 @@
 use crate::ir::{self, Compiled, Type};
 use crate::launch::{self, AppProcess, LaunchOptions, Session};
-use crate::{Project, context, pipeline, progress, testrun};
+use crate::{Project, artifacts, codegen, context, pipeline, progress, testrun};
 use serde_json::{Value as Json, json};
 use std::fs;
 use std::io::{Read, Write};
@@ -399,19 +399,50 @@ fn one_run(
     )
 }
 
-fn baseline_binary() -> Result<PathBuf, String> {
-    let root = env!("CARGO_MANIFEST_DIR");
+const BASELINE_SOURCE: &str = include_str!("../bench/baseline/src/main.rs");
+const SERDE_DEP: &str = "serde = { version = \"1\", features = [\"derive\"] }\n";
+
+fn standalone(out: &Path, name: &str, main_rs: &str, extra_deps: &str) -> Result<PathBuf, String> {
+    let crates = out.join("crates");
+    fs::create_dir_all(&crates).map_err(|e| e.to_string())?;
+    artifacts::write_file(
+        &crates,
+        "frame-runtime/Cargo.toml",
+        codegen::RUNTIME_MANIFEST,
+    )?;
+    artifacts::write_file(&crates, "frame-runtime/src/lib.rs", codegen::RUNTIME_SOURCE)?;
+    artifacts::write_file(&crates, &format!("{name}/src/main.rs"), main_rs)?;
+    artifacts::write_file(
+        &crates,
+        &format!("{name}/Cargo.toml"),
+        format!(
+            "[package]\nname = {name:?}\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[dependencies]\nframe-runtime = {{ path = \"../frame-runtime\" }}\n{extra_deps}\n[workspace]\n"
+        ),
+    )?;
+    artifacts::write_file(
+        &crates,
+        &format!("{name}/Cargo.lock"),
+        pipeline::WORKSPACE_LOCK,
+    )?;
+    artifacts::write_file(
+        &crates,
+        &format!("{name}/rust-toolchain.toml"),
+        pipeline::TOOLCHAIN_PIN,
+    )?;
+    Ok(crates.join(name))
+}
+
+fn cargo_bin(p: &Project, dir: &Path, name: &str) -> Result<PathBuf, String> {
     let out = Command::new(pipeline::cargo())
         .args([
             "build",
             "--release",
-            "-p",
-            "fieldwork-baseline",
             "--message-format=json",
             "--manifest-path",
         ])
-        .arg(format!("{root}/Cargo.toml"))
-        .current_dir(root)
+        .arg(dir.join("Cargo.toml"))
+        .current_dir(dir)
+        .env("CARGO_TARGET_DIR", pipeline::target_dir(p))
         .stdin(Stdio::null())
         .output()
         .map_err(|e| e.to_string())?;
@@ -421,12 +452,12 @@ fn baseline_binary() -> Result<PathBuf, String> {
         .find_map(|m| {
             m["executable"]
                 .as_str()
-                .filter(|_| m["target"]["name"] == "fieldwork-baseline")
+                .filter(|_| m["target"]["name"] == name)
                 .map(PathBuf::from)
         })
         .ok_or_else(|| {
             format!(
-                "baseline build failed: {}",
+                "{name} failed to build: {}",
                 String::from_utf8_lossy(&out.stderr)
                     .lines()
                     .last()
@@ -456,7 +487,8 @@ fn runtime(
     let frame_bin = pipeline::build(p, c)
         .map_err(|(_, d)| d.iter().map(|x| x.render()).collect::<Vec<_>>().join("\n"))?
         .binary;
-    let base_bin = baseline_binary()?;
+    let base_dir = standalone(out, "fieldwork-baseline", BASELINE_SOURCE, SERDE_DEP)?;
+    let base_bin = cargo_bin(p, &base_dir, "fieldwork-baseline")?;
     let dir = out.join("runtime");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let (workers, per_worker) = if quick { (4, 100) } else { (8, 500) };
@@ -530,7 +562,7 @@ fn runtime(
 
 fn kernel(c: &Compiled, p: &Project, out: &Path, quick: bool, runs: usize) -> Result<Json, String> {
     let dir = out.join("kernel");
-    fs::create_dir_all(dir.join("rust/src")).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let title = c
         .app
         .actions
@@ -592,47 +624,15 @@ fn kernel(c: &Compiled, p: &Project, out: &Path, quick: bool, runs: usize) -> Re
         "#![forbid(unsafe_code)]\nuse frame_runtime as rt;\nfn main() {{\n    let args: Vec<String> = std::env::args().collect();\n    let text = std::fs::read_to_string(&args[1]).unwrap();\n    let iters: usize = args[2].parse().unwrap();\n    let recs: Vec<(String, String, i64)> = text.lines().map(|l| {{ let mut p = l.splitn(3, '\\t'); (p.next().unwrap().to_string(), p.next().unwrap().to_string(), p.next().unwrap().parse().unwrap()) }}).collect();\n    let (mut ok, mut bt, mut bi, mut br, mut ov, mut sum) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);\n    let t0 = std::time::Instant::now();\n    for _ in 0..iters {{\n        ok = 0; bt = 0; bi = 0; br = 0; ov = 0; sum = 0;\n        for (title, id, rev) in &recs {{\n            if rt::check_text({}, title, {min}, {max}).is_err() {{ bt += 1; continue; }}\n            if !rt::is_canonical_uuid(id) {{ bi += 1; continue; }}\n            if rev.abs() > rt::MAX_SAFE_INT {{ br += 1; continue; }}\n            if *rev >= rt::MAX_SAFE_INT {{ ov += 1; continue; }}\n            ok += 1;\n            sum = sum.wrapping_add(((rev + 1) as u64).wrapping_mul(31).wrapping_add(title.len() as u64));\n        }}\n    }}\n    let ns = t0.elapsed().as_nanos();\n    println!(\"{{{{\\\"ok\\\":{{ok}},\\\"bad_title\\\":{{bt}},\\\"bad_id\\\":{{bi}},\\\"bad_revision\\\":{{br}},\\\"overflow\\\":{{ov}},\\\"checksum\\\":{{sum}},\\\"ns\\\":{{ns}}}}}}\");\n}}\n",
         "\"title\""
     );
-    fs::write(dir.join("rust/src/main.rs"), rust).map_err(|e| e.to_string())?;
-    fs::write(
-        dir.join("rust/Cargo.toml"),
-        format!("[package]\nname = \"frame-kernel\"\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[dependencies]\nframe-runtime = {{ path = {:?} }}\n\n[workspace]\n", pipeline::RUNTIME_PATH),
-    )
-    .map_err(|e| e.to_string())?;
-    fs::write(dir.join("rust/Cargo.lock"), pipeline::WORKSPACE_LOCK).map_err(|e| e.to_string())?;
-    fs::write(
-        dir.join("rust/rust-toolchain.toml"),
-        pipeline::TOOLCHAIN_PIN,
-    )
-    .map_err(|e| e.to_string())?;
+    let kernel_dir = standalone(out, "frame-kernel", &rust, "")?;
     let cxx = Command::new("c++")
         .args(["-O3", "-std=c++17", "-o"])
         .arg(dir.join("kernel-cpp"))
         .arg(dir.join("kernel.cpp"))
         .output();
     let cxx_ok = cxx.as_ref().is_ok_and(|o| o.status.success());
-    let rs = Command::new(pipeline::cargo())
-        .args([
-            "build",
-            "--release",
-            "--message-format=json",
-            "--manifest-path",
-        ])
-        .arg(dir.join("rust/Cargo.toml"))
-        .current_dir(dir.join("rust"))
-        .env("CARGO_TARGET_DIR", pipeline::target_dir(p))
-        .stdin(Stdio::null())
-        .output()
-        .map_err(|e| e.to_string())?;
-    let rust_bin = String::from_utf8_lossy(&rs.stdout)
-        .lines()
-        .filter_map(|l| serde_json::from_str::<Json>(l).ok())
-        .find_map(|m| {
-            m["executable"]
-                .as_str()
-                .filter(|_| m["target"]["name"] == "frame-kernel")
-                .map(PathBuf::from)
-        })
-        .ok_or("generated Rust kernel failed to build")?;
+    let rust_bin = cargo_bin(p, &kernel_dir, "frame-kernel")
+        .map_err(|e| format!("generated Rust kernel failed to build: {e}"))?;
     let iters = if quick { "3" } else { "10" };
     let exec = |bin: &Path| -> Result<Json, String> {
         let o = Command::new(bin)
@@ -756,47 +756,16 @@ fn agent_iteration(p: &Project, c: &Compiled, out: &Path) -> Result<Json, String
         &cand.graph_sha256,
     );
 
-    let bdir = dir.join("baseline");
-    fs::create_dir_all(bdir.join("src")).map_err(|e| e.to_string())?;
-    let bsrc = include_str!("../bench/baseline/src/main.rs");
+    let bsrc = BASELINE_SOURCE;
     let bchange = (
         "rt::check_text(\"title\", &req.title, 1, 200)",
         "rt::check_text(\"title\", &req.title, 1, 120)",
     );
     let t1 = Instant::now();
     let bedited = bsrc.replacen(bchange.0, bchange.1, 1);
-    fs::write(bdir.join("src/main.rs"), &bedited).map_err(|e| e.to_string())?;
-    fs::write(
-        bdir.join("Cargo.toml"),
-        format!("[package]\nname = \"fieldwork-baseline-edit\"\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[dependencies]\nframe-runtime = {{ path = {:?} }}\nserde = {{ version = \"1\", features = [\"derive\"] }}\n\n[workspace]\n", pipeline::RUNTIME_PATH),
-    )
-    .map_err(|e| e.to_string())?;
-    fs::write(bdir.join("Cargo.lock"), pipeline::WORKSPACE_LOCK).map_err(|e| e.to_string())?;
-    fs::write(bdir.join("rust-toolchain.toml"), pipeline::TOOLCHAIN_PIN)
-        .map_err(|e| e.to_string())?;
-    let o = Command::new(pipeline::cargo())
-        .args([
-            "build",
-            "--release",
-            "--message-format=json",
-            "--manifest-path",
-        ])
-        .arg(bdir.join("Cargo.toml"))
-        .current_dir(&bdir)
-        .env("CARGO_TARGET_DIR", pipeline::target_dir(p))
-        .stdin(Stdio::null())
-        .output()
-        .map_err(|e| e.to_string())?;
-    let bbin = String::from_utf8_lossy(&o.stdout)
-        .lines()
-        .filter_map(|l| serde_json::from_str::<Json>(l).ok())
-        .find_map(|m| {
-            m["executable"]
-                .as_str()
-                .filter(|_| m["target"]["name"] == "fieldwork-baseline-edit")
-                .map(PathBuf::from)
-        })
-        .ok_or("edited baseline failed to build")?;
+    let bdir = standalone(out, "fieldwork-baseline-edit", &bedited, SERDE_DEP)?;
+    let bbin = cargo_bin(p, &bdir, "fieldwork-baseline-edit")
+        .map_err(|e| format!("edited baseline failed to build: {e}"))?;
     let brun = testrun::run_all(
         c,
         &tests,

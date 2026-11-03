@@ -1,6 +1,6 @@
 # Frame 0.1 progress and completion report
 
-Status on 2026-11-02: milestones M0–M5 are implemented and verified locally on macOS 15.7 (Apple M1 Max, Rust 1.97.1). `cargo test --workspace` runs 36 tests, which pass in about 75 s. They exercise real HTTP, SQLite, worker processes, Seatbelt sandboxes and headless Chromium. On Linux (checked in a Debian container) the same suite passes, with the 4 Seatbelt-dependent repair tests reported as ignored.
+Status on 2026-11-02: milestones M0–M5 are implemented and verified locally on macOS 15.7 (Apple M1 Max, Rust 1.97.1). `cargo test --workspace` runs 37 tests, which pass in about 75 s. They exercise real HTTP, SQLite, worker processes, Seatbelt sandboxes and headless Chromium. On Linux (checked in a Debian container) the same suite passes, with the 4 Seatbelt-dependent repair tests reported as ignored.
 
 Run `scripts/collect-evidence.sh` to export the evidence referenced below into `evidence/`. Neither `evidence/` nor the build artifacts under `.frame/` are tracked in git, since both contain machine-specific paths and timings. Spec clarifications are in [decisions.md](decisions.md), and the example app lives in [examples/fieldwork](../examples/fieldwork).
 
@@ -99,7 +99,6 @@ The generated Rust calls the same `frame-runtime` validators the handlers use. T
 - **Incident links.** Incident `supersedes`/`revoked_by` fields exist but nothing sets them yet. No CLI exists to link decision records to nodes.
 - **File permissions.** SQLite WAL and SHM side files are created with the process umask. Only the main app and control database files are set to `0600`.
 - **Untested paths.** The readiness-timeout restart path and the `E_DEPENDENCIES` classification are implemented but not covered by automated tests.
-- **Bundled runtime path.** Generated apps reference `runtime/` in this checkout by absolute path (D4).
 - **Browser skips.** The browser journey needs Node and Chromium. It reports `BROWSER_UNAVAILABLE` and skips unless `FRAME_REQUIRE_BROWSER` is set.
 
 ## Dependencies and security boundary

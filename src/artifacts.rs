@@ -57,6 +57,9 @@ pub fn prepare(p: &Project) -> Result<PathBuf, String> {
 
 pub fn write_file(base: &Path, rel: &str, contents: impl AsRef<[u8]>) -> Result<PathBuf, String> {
     let path = safe_join(base, rel)?;
+    if fs::read(&path).is_ok_and(|old| old == contents.as_ref()) {
+        return Ok(path);
+    }
     fs::write(&path, contents).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
     Ok(path)
 }
