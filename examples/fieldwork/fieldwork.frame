@@ -1,7 +1,5 @@
 frame "0.1";
 
-// Normative syntax fixture for the proposed Frame compiler.
-// This file is not executable until the compiler is implemented.
 app fieldwork {
   targets = [web];
 

@@ -84,7 +84,8 @@ fn formatting_preserves_comments_and_semantics() {
             "set = { completed: true };",
             "set = {completed:true,} ; // keep me",
         )
-        .replace("targets = [web];", "targets=[ web , ];\n\n\n// floating\n");
+        .replace("targets = [web];", "targets=[ web , ];\n\n\n// floating\n")
+        .replace("frame \"0.1\";", "frame \"0.1\";\n// leading");
     let formatted = format_source(&messy, FILE).unwrap();
     assert_eq!(
         format_source(&formatted, FILE).unwrap(),
@@ -95,7 +96,7 @@ fn formatting_preserves_comments_and_semantics() {
         "// keep me",
         "// floating",
         "// id and revision",
-        "// Normative syntax",
+        "// leading",
     ] {
         assert!(formatted.contains(comment), "lost {comment}");
     }
