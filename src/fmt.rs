@@ -11,7 +11,7 @@ pub fn format(src: &str, doc: &Document) -> String {
         fresh_scope: true,
     };
     f.comments_before(doc.span.start, 0);
-    f.line(0, &format!("frame {};", quote(&doc.version)));
+    f.line(0, &format!("imanari {};", quote(&doc.version)));
     f.prev_end = doc.header_end;
     f.comments_before(doc.app_keyword.start, 0);
     f.gap_blank(doc.app_keyword.start);

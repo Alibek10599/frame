@@ -8,7 +8,7 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.97"
 publish = false
-repository = "https://github.com/Alibek10599/frame"
+repository = "https://github.com/Alibek10599/imanari"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -19,17 +19,21 @@ tokio = { version = "1.53", default-features = false }
 sqlx = { version = "0.8.6", default-features = false, features = ["sqlite", "runtime-tokio"] }
 
 [package]
-name = "frame"
+name = "imanari"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 repository.workspace = true
-description = "Compiler and local runtime for the Frame system language"
+description = "Compiler and local runtime for the Imanari system language"
 readme = "README.md"
 keywords = ["language", "compiler", "codegen", "web"]
 categories = ["compilers", "command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "nari"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }

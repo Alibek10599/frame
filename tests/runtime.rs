@@ -1,18 +1,18 @@
 mod common;
 
 use common::*;
-use frame::http;
-use frame::launch::{TIMEOUT, call};
+use imanari::http;
+use imanari::launch::{TIMEOUT, call};
 use serde_json::{Value, json};
 use std::sync::{Arc, Barrier};
 
-fn items(port: u16, s: &frame::launch::Session) -> Vec<Value> {
+fn items(port: u16, s: &imanari::launch::Session) -> Vec<Value> {
     let r = call(port, Some(s), "list_tasks", &json!({}), None).unwrap();
     assert_eq!(r.status, 200, "{:?}", r.json());
     r.json()["data"]["items"].as_array().cloned().unwrap()
 }
 
-fn create(port: u16, s: &frame::launch::Session, title: &str, key: &str) -> http::Response {
+fn create(port: u16, s: &imanari::launch::Session, title: &str, key: &str) -> http::Response {
     call(
         port,
         Some(s),
@@ -83,8 +83,8 @@ fn users_are_isolated_and_web_boundary_is_enforced() {
             .status,
         401
     );
-    let forged = frame::launch::Session {
-        cookie: "frame_session=deadbeef".into(),
+    let forged = imanari::launch::Session {
+        cookie: "nari_session=deadbeef".into(),
         ..a.clone()
     };
     assert_eq!(
@@ -93,7 +93,7 @@ fn users_are_isolated_and_web_boundary_is_enforced() {
             .status,
         401
     );
-    let cross_cookie = frame::launch::Session {
+    let cross_cookie = imanari::launch::Session {
         csrf: other.csrf.clone(),
         ..a.clone()
     };
@@ -109,8 +109,8 @@ fn users_are_isolated_and_web_boundary_is_enforced() {
         let mut h: Vec<(String, String)> = vec![
             ("Content-Type".into(), "application/json".into()),
             ("Cookie".into(), a.cookie.clone()),
-            ("X-Frame-CSRF".into(), a.csrf.clone()),
-            ("Idempotency-Key".into(), frame::random_hex(8)),
+            ("X-Nari-CSRF".into(), a.csrf.clone()),
+            ("Idempotency-Key".into(), imanari::random_hex(8)),
         ];
         for (k, v) in extra {
             h.push((k.into(), v));
@@ -196,8 +196,8 @@ fn bootstrap_token_is_single_use() {
     let b = fieldwork();
     let dir = scratch("bootstrap");
     let app = start(b, &dir.join("app.db"), &[]).unwrap();
-    frame::launch::dev_sessions(app.port, &app.bootstrap).unwrap();
-    assert!(frame::launch::dev_sessions(app.port, &app.bootstrap).is_err());
+    imanari::launch::dev_sessions(app.port, &app.bootstrap).unwrap();
+    assert!(imanari::launch::dev_sessions(app.port, &app.bootstrap).is_err());
     let page = http::request(app.port, "GET", "/", &[], b"", TIMEOUT).unwrap();
     assert_eq!(page.status, 200);
     let html = String::from_utf8(page.body).unwrap();
@@ -277,7 +277,7 @@ fn committed_write_with_lost_response_is_returned_on_retry() {
     let dir = scratch("lost-response");
     let db = dir.join("app.db");
     let (mut app, a, _) =
-        app_with_sessions(b, &db, &[("FRAME_FAULT", "crash_after_commit:create_task")]);
+        app_with_sessions(b, &db, &[("NARI_FAULT", "crash_after_commit:create_task")]);
     let lost = call(
         app.port,
         Some(&a),
@@ -301,11 +301,8 @@ fn rolled_back_write_is_not_reported_or_persisted() {
     let b = fieldwork();
     let dir = scratch("rollback");
     let db = dir.join("app.db");
-    let (mut app, a, _) = app_with_sessions(
-        b,
-        &db,
-        &[("FRAME_FAULT", "crash_before_commit:create_task")],
-    );
+    let (mut app, a, _) =
+        app_with_sessions(b, &db, &[("NARI_FAULT", "crash_before_commit:create_task")]);
     let r = call(
         app.port,
         Some(&a),
@@ -414,12 +411,12 @@ fn incompatible_schema_stops_with_migration_required() {
 }
 
 #[test]
-fn rust_compile_errors_map_back_to_frame_spans() {
+fn rust_compile_errors_map_back_to_imanari_spans() {
     let project = write_project("rustc-map", FIXTURE);
-    let (c, _) = frame::compile(FIXTURE, &project.file_name).unwrap();
-    let out = frame::artifacts::prepare(&project).unwrap();
-    let package = frame::pipeline::package_name(&project, &c.app.name);
-    let generated = frame::pipeline::generate(&out, &c, &package).unwrap();
+    let (c, _) = imanari::compile(FIXTURE, &project.file_name).unwrap();
+    let out = imanari::artifacts::prepare(&project).unwrap();
+    let package = imanari::pipeline::package_name(&project, &c.app.name);
+    let generated = imanari::pipeline::generate(&out, &c, &package).unwrap();
     let action = generated
         .regions
         .iter()
@@ -437,7 +434,7 @@ fn rust_compile_errors_map_back_to_frame_spans() {
         "        let broken: u8 = \"not a number\";".into(),
     );
     std::fs::write(&main, lines.join("\n")).unwrap();
-    let shifted = frame::codegen::Generated {
+    let shifted = imanari::codegen::Generated {
         regions: generated
             .regions
             .iter()
@@ -454,7 +451,7 @@ fn rust_compile_errors_map_back_to_frame_spans() {
             .collect(),
         ..generated
     };
-    let (code, diags) = frame::pipeline::compile_app(
+    let (code, diags) = imanari::pipeline::compile_app(
         &c,
         &out,
         &shifted,
@@ -469,7 +466,7 @@ fn rust_compile_errors_map_back_to_frame_spans() {
         .find(|d| d.code == "E_BACKEND_COMPILE")
         .unwrap();
     assert_eq!(d.node_id.as_deref(), Some("fieldwork/action/complete_task"));
-    assert_eq!(d.file, "fieldwork.frame");
+    assert_eq!(d.file, "fieldwork.nari");
     assert_eq!(
         &FIXTURE[d.span.start..d.span.start + 22],
         "action complete_task {"
@@ -489,7 +486,7 @@ fn database_symlink_escapes_are_rejected_but_system_symlinks_are_not() {
             .unwrap_or(std::path::Path::new("tmp")),
     );
     if via_var.exists() {
-        let db = via_var.join(format!("frame-{}.db", frame::random_hex(4)));
+        let db = via_var.join(format!("nari-{}.db", imanari::random_hex(4)));
         assert!(
             start(b, &db, &[]).is_ok(),
             "a system-level symlink such as /var must not block startup"
@@ -498,11 +495,11 @@ fn database_symlink_escapes_are_rejected_but_system_symlinks_are_not() {
     let outside = scratch("symlink-target");
     let link_dir = dir.join("project");
     std::fs::create_dir_all(&link_dir).unwrap();
-    std::os::unix::fs::symlink(&outside, link_dir.join(".frame")).unwrap();
-    let app = frame::launch::AppProcess::start(&frame::launch::LaunchOptions {
+    std::os::unix::fs::symlink(&outside, link_dir.join(".nari")).unwrap();
+    let app = imanari::launch::AppProcess::start(&imanari::launch::LaunchOptions {
         binary: b.binary.clone(),
         cwd: link_dir.clone(),
-        database: std::path::PathBuf::from(".frame/app.db"),
+        database: std::path::PathBuf::from(".nari/app.db"),
         port: 0,
         log: None,
         env: Vec::new(),
@@ -510,7 +507,7 @@ fn database_symlink_escapes_are_rejected_but_system_symlinks_are_not() {
     });
     assert!(
         app.is_err(),
-        "a symlinked .frame directory inside the project is refused"
+        "a symlinked .nari directory inside the project is refused"
     );
     assert!(!outside.join("app.db").exists());
 }

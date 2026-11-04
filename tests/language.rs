@@ -1,8 +1,8 @@
-use frame::diag::Diagnostic;
-use frame::{compile, format_source, ir};
+use imanari::diag::Diagnostic;
+use imanari::{compile, format_source, ir};
 
-const FIXTURE: &str = include_str!("../examples/fieldwork/fieldwork.frame");
-const FILE: &str = "fieldwork.frame";
+const FIXTURE: &str = include_str!("../examples/fieldwork/fieldwork.nari");
+const FILE: &str = "fieldwork.nari";
 
 fn errors(src: &str) -> Vec<Diagnostic> {
     match compile(src, FILE) {
@@ -85,7 +85,7 @@ fn formatting_preserves_comments_and_semantics() {
             "set = {completed:true,} ; // keep me",
         )
         .replace("targets = [web];", "targets=[ web , ];\n\n\n// floating\n")
-        .replace("frame \"0.1\";", "frame \"0.1\";\n// leading");
+        .replace("imanari \"0.1\";", "imanari \"0.1\";\n// leading");
     let formatted = format_source(&messy, FILE).unwrap();
     assert_eq!(
         format_source(&formatted, FILE).unwrap(),
@@ -283,7 +283,7 @@ fn rejects_invalid_programs_with_useful_spans() {
             None,
         ),
         (
-            mutate("database = \".frame/app.db\";", "database = \"../app.db\";"),
+            mutate("database = \".nari/app.db\";", "database = \"../app.db\";"),
             "E_PATH",
             None,
         ),
@@ -360,7 +360,7 @@ fn rejects_invalid_programs_with_useful_spans() {
             None,
         ),
         (
-            mutate("frame \"0.1\";", "frame \"0.2\";"),
+            mutate("imanari \"0.1\";", "imanari \"0.2\";"),
             "E_UNSUPPORTED_VERSION",
             Some("\"0.2\""),
         ),
@@ -413,7 +413,7 @@ fn rejects_invalid_programs_with_useful_spans() {
 
 #[test]
 fn enforces_parser_limits() {
-    let big = format!("{FIXTURE}{}", " ".repeat(frame::syntax::MAX_SOURCE));
+    let big = format!("{FIXTURE}{}", " ".repeat(imanari::syntax::MAX_SOURCE));
     expect(&big, "E_LIMIT_SOURCE", None);
     let deep = mutate(
         "default = false;",
@@ -501,7 +501,7 @@ fn graph_matches_committed_snapshot() {
         "/tests/snapshots/fieldwork.graph.json"
     );
     let snapshot = std::fs::read_to_string(path)
-        .expect("committed snapshot; regenerate with `frame build` and copy .frame/graph.json");
+        .expect("committed snapshot; regenerate with `nari build` and copy .nari/graph.json");
     assert_eq!(graph, snapshot);
     assert_eq!(
         c.graph_sha256,
@@ -512,18 +512,18 @@ fn graph_matches_committed_snapshot() {
 #[test]
 fn init_creates_a_checked_project_and_never_overwrites() {
     let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR"))
-        .join(format!("init-{}", frame::random_hex(4)));
+        .join(format!("init-{}", imanari::random_hex(4)));
     std::fs::create_dir_all(&dir).unwrap();
     let run = |args: &[&str]| {
-        std::process::Command::new(env!("CARGO_BIN_EXE_frame"))
+        std::process::Command::new(env!("CARGO_BIN_EXE_nari"))
             .args(["--project", dir.to_str().unwrap()])
             .args(args)
             .output()
             .unwrap()
     };
     assert!(run(&["init", "demo_app"]).status.success());
-    let src = std::fs::read_to_string(dir.join("demo_app/demo_app.frame")).unwrap();
-    assert!(compile(&src, "demo_app.frame").is_ok());
+    let src = std::fs::read_to_string(dir.join("demo_app/demo_app.nari")).unwrap();
+    assert!(compile(&src, "demo_app.nari").is_ok());
     assert!(dir.join("demo_app/acceptance/complete_task.json").exists());
     let again = run(&["init", "demo_app"]);
     assert_eq!(again.status.code(), Some(3));

@@ -375,7 +375,7 @@ pub fn rust_main(
     e.line(0, "#![forbid(unsafe_code)]");
     e.line(0, "#![allow(clippy::all)]");
     e.line(0, "");
-    e.line(0, "use frame_runtime as rt;");
+    e.line(0, "use imanari_runtime as rt;");
     e.line(0, "use rt::serde_json::Value as Json;");
     e.line(0, "");
     for (i, ent) in app.entities.iter().enumerate() {
@@ -419,7 +419,7 @@ pub fn rust_main(
         for (path, ctype) in [
             ("app.js", "text/javascript; charset=utf-8"),
             ("app.css", "text/css; charset=utf-8"),
-            ("frame.json", "application/json"),
+            ("nari.json", "application/json"),
         ] {
             e.line(
                 2,
@@ -463,7 +463,7 @@ fn ts_type(t: &Type) -> &'static str {
 
 pub fn typescript(app: &App, source_sha256: &str) -> String {
     let mut out = format!(
-        "export declare const FRAME_SOURCE_SHA256: {};\n\n",
+        "export declare const NARI_SOURCE_SHA256: {};\n\n",
         serde_json::to_string(source_sha256).unwrap_or_default()
     );
     out.push_str("export type ApiError = { code: string; message: string; field?: string };\n");
@@ -593,7 +593,7 @@ fn html_escape(s: &str) -> String {
 
 pub fn index_html(app: &App, source_sha256: &str) -> String {
     format!(
-        "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"frame-source-sha256\" content=\"{}\">\n<title>{}</title>\n<link rel=\"stylesheet\" href=\"/assets/app.css\">\n<script src=\"/assets/app.js\" defer></script>\n</head>\n<body>\n<header id=\"dev-bar\" aria-label=\"Development identity\"></header>\n<main id=\"app\"><p role=\"status\">Loading…</p></main>\n</body>\n</html>\n",
+        "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"nari-source-sha256\" content=\"{}\">\n<title>{}</title>\n<link rel=\"stylesheet\" href=\"/assets/app.css\">\n<script src=\"/assets/app.js\" defer></script>\n</head>\n<body>\n<header id=\"dev-bar\" aria-label=\"Development identity\"></header>\n<main id=\"app\"><p role=\"status\">Loading…</p></main>\n</body>\n</html>\n",
         html_escape(source_sha256),
         html_escape(&app.name)
     )
@@ -610,7 +610,7 @@ pub fn generate(c: &Compiled, package: &str) -> Generated {
     files.insert(
         "app/Cargo.toml".into(),
         format!(
-            "[package]\nname = {}\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[dependencies]\nframe-runtime = {{ path = {} }}\n\n[profile.release]\ncodegen-units = 16\n\n[workspace]\n",
+            "[package]\nname = {}\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[dependencies]\nimanari-runtime = {{ path = {} }}\n\n[profile.release]\ncodegen-units = 16\n\n[workspace]\n",
             toml_str(package),
             toml_str("../runtime")
         ),
@@ -628,7 +628,7 @@ pub fn generate(c: &Compiled, package: &str) -> Generated {
     files.insert("web/app.js".into(), APP_JS.to_string());
     files.insert("web/app.css".into(), APP_CSS.to_string());
     files.insert(
-        "web/frame.json".into(),
+        "web/nari.json".into(),
         ir::canonical(&web_config(&c.app, &c.source_sha256)) + "\n",
     );
     files.insert("web/api.d.ts".into(), typescript(&c.app, &c.source_sha256));

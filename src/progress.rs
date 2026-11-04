@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const SCHEMA: &str = "frame-task/0.1";
+pub const SCHEMA: &str = "nari-task/0.1";
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Evidence {

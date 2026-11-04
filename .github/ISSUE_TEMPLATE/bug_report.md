@@ -10,7 +10,7 @@ labels: bug
 
 **Steps to reproduce**
 
-Paste the smallest `.frame` source that reproduces it, and the commands you ran (for example `frame --json check`).
+Paste the smallest `.nari` source that reproduces it, and the commands you ran (for example `nari --json check`).
 
 **Output**
 
@@ -18,6 +18,6 @@ Paste the full diagnostic or JSON output.
 
 **Environment**
 
-- Frame commit:
+- Imanari commit:
 - OS and version:
 - `rustc -V`:

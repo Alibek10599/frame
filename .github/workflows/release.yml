@@ -27,20 +27,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: rustup toolchain install
-      - run: cargo build --release --locked --bin frame
-      - run: target/release/frame --project examples/fieldwork check
+      - run: cargo build --release --locked --bin nari
+      - run: target/release/nari --project examples/fieldwork check
       - name: Package
         shell: bash
         run: |
-          name="frame-${{ matrix.target }}"
+          name="imanari-${{ matrix.target }}"
           mkdir "$name"
-          cp target/release/frame LICENSE-MIT LICENSE-APACHE README.md CHANGELOG.md "$name/"
+          cp target/release/nari LICENSE-MIT LICENSE-APACHE README.md CHANGELOG.md "$name/"
           tar -czf "$name.tar.gz" "$name"
           shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256"
       - uses: actions/upload-artifact@v4
         with:
-          name: frame-${{ matrix.target }}
-          path: frame-${{ matrix.target }}.tar.gz*
+          name: imanari-${{ matrix.target }}
+          path: imanari-${{ matrix.target }}.tar.gz*
 
   publish:
     needs: build
@@ -57,4 +57,4 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           awk -v v="$version" '$0 ~ "^## \\[" v "\\]" {on=1; next} /^## \[/ {on=0} /^\[/ {on=0} on' CHANGELOG.md > notes.md
-          gh release create "$GITHUB_REF_NAME" dist/* --title "Frame $version" --notes-file notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Imanari $version" --notes-file notes.md

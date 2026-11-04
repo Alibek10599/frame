@@ -42,7 +42,7 @@ impl Proposer {
 }
 
 pub struct Options {
-    pub frame_exe: PathBuf,
+    pub nari_exe: PathBuf,
     pub proposer: Proposer,
 }
 
@@ -62,7 +62,7 @@ pub fn compat_key(c: &Compiled) -> String {
     let (_, schema) = codegen::schema(&c.app);
     ir::sha256_hex(
         format!(
-            "{}|{}|{}|frame-runtime/0.1",
+            "{}|{}|{}|imanari-runtime/0.1",
             ir::COMPILER_VERSION,
             pipeline::lock_hash(),
             schema
@@ -130,7 +130,7 @@ pub async fn record_test_failures(
     Ok(ids)
 }
 
-fn frame_literal(v: &Json) -> Option<String> {
+fn nari_literal(v: &Json) -> Option<String> {
     match v {
         Json::Bool(b) => Some(b.to_string()),
         Json::Number(n) => n.as_i64().map(|n| n.to_string()),
@@ -160,7 +160,7 @@ pub fn fixture_propose(
         src["start"].as_u64().ok_or("context has no target span")? as usize,
         src["text"].as_str().ok_or("context has no target text")?,
     );
-    let prefix = "frame \"0.1\";\napp snippet {\n";
+    let prefix = "imanari \"0.1\";\napp snippet {\n";
     let doc = syntax::parse(&format!("{prefix}{text}\n}}\n"), "snippet")
         .map_err(|d| format!("cannot parse target snippet: {}", d.message))?;
     let Some(Entry::Block(block)) = doc.entries.first() else {
@@ -191,7 +191,7 @@ pub fn fixture_propose(
     let replacement = match precedent.and_then(|p| p["intervention"]["replacement"].as_str()) {
         Some(r) => r.to_string(),
         None => {
-            frame_literal(&mismatch["expected"]).ok_or("expected value is not a scalar literal")?
+            nari_literal(&mismatch["expected"]).ok_or("expected value is not a scalar literal")?
         }
     };
     let base = &bundle.manifest["patch_preconditions"];
@@ -502,7 +502,7 @@ pub fn run(
         compat: compat.clone(),
     };
     let mut report = json!({
-        "schema": "frame-repair/0.1",
+        "schema": "nari-repair/0.1",
         "repair_id": store.repair_id,
         "incident_id": incident_id,
         "target_id": target,
@@ -615,7 +615,7 @@ pub fn run(
         workspace: ws.clone(),
         protected: protected.clone(),
         denied_reads: sandbox::default_denied_reads(&p.dir, &c.app.runtime.database),
-        frame_exe: o.frame_exe.clone(),
+        nari_exe: o.nari_exe.clone(),
     };
     let isolation = sandbox::detect(sb);
     let failing_test: Vec<ProtectedTest> = snap_tests
@@ -795,13 +795,13 @@ pub fn run(
     task.completed
         .push("protected suite passed against candidate".into());
     task.outstanding_checks = vec![format!(
-        "explicit local apply: frame apply-repair {incident_id} --candidate {candidate_hash}"
+        "explicit local apply: nari apply-repair {incident_id} --candidate {candidate_hash}"
     )];
     task.state = "validated".into();
     let cands = inc_dir.join("candidates");
     artifacts::ensure_real_dir(&cands)?;
     let stored = json!({
-        "schema": "frame-candidate/0.1",
+        "schema": "nari-candidate/0.1",
         "incident_id": incident_id,
         "repair_id": store.repair_id,
         "candidate_hash": candidate_hash,
@@ -895,7 +895,7 @@ pub fn apply(
     if c.source_sha256 != patch.base_source_sha256 {
         return reject(
             "PATCH_STALE",
-            "source changed since the candidate was validated; re-run frame repair".into(),
+            "source changed since the candidate was validated; re-run nari repair".into(),
         );
     }
     let tests = testrun::load_protected(&p.dir)?;
@@ -928,7 +928,7 @@ pub fn apply(
         workspace: ws.clone(),
         protected,
         denied_reads: sandbox::default_denied_reads(&p.dir, &c.app.runtime.database),
-        frame_exe: o.frame_exe.clone(),
+        nari_exe: o.nari_exe.clone(),
     };
     let sb = match sandbox::detect(sb) {
         Isolation::Seatbelt(sb) => sb,
@@ -960,7 +960,7 @@ pub fn apply(
     if fs::symlink_metadata(&p.file).is_ok_and(|m| m.file_type().is_symlink()) {
         return reject("PATH_FORBIDDEN", "project source is a symlink".into());
     }
-    let tmp = p.dir.join(format!(".{}.frame-apply", p.file_name));
+    let tmp = p.dir.join(format!(".{}.nari-apply", p.file_name));
     fs::write(&tmp, &cand_src)
         .and_then(|_| fs::rename(&tmp, &p.file))
         .map_err(|e| format!("cannot write source: {e}"))?;

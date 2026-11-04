@@ -1,8 +1,8 @@
-# Frame
+# Imanari
 
-Frame is a small, human-readable system language. A `.frame` file declares data, owner-scoped actions, screens, runtime limits, recovery policy, and repair authority. The compiler turns it into a native Rust backend (Axum + SQLx/SQLite), a browser UI built from native controls, a typed IR, and a dependency graph. Agents work from bounded, versioned context bundles instead of reconstructing the project from chat history.
+Imanari is a small, human-readable system language. A `.nari` file declares data, owner-scoped actions, screens, runtime limits, recovery policy, and repair authority. The compiler turns it into a native Rust backend (Axum + SQLx/SQLite), a browser UI built from native controls, a typed IR, and a dependency graph. Agents work from bounded, versioned context bundles instead of reconstructing the project from chat history.
 
-Frame 0.1 is a developer preview. [docs/spec.md](docs/spec.md) is the normative contract and [examples/fieldwork](examples/fieldwork) the reference app. [docs/progress.md](docs/progress.md) maps every acceptance item to its evidence, and [docs/decisions.md](docs/decisions.md) records spec clarifications.
+Imanari 0.1 is a developer preview. [docs/spec.md](docs/spec.md) is the normative contract and [examples/fieldwork](examples/fieldwork) the reference app. [docs/progress.md](docs/progress.md) maps every acceptance item to its evidence, and [docs/decisions.md](docs/decisions.md) records spec clarifications.
 
 This is a local vertical slice. It is not a production platform, and it makes no universal security or C++-parity claims (see [Non-claims](#limits-and-non-claims)).
 
@@ -10,61 +10,61 @@ This is a local vertical slice. It is not a production platform, and it makes no
 
 - Rust via rustup. Generated apps pin Rust 1.97.1 through `rust-toolchain.toml`, and rustup installs it on first use.
 - macOS for isolated repair, which uses Seatbelt (`/usr/bin/sandbox-exec`). On other platforms repair runs proposal and static validation only and reports `SANDBOX_UNAVAILABLE`.
-- Network access for the first `frame build`, which downloads crates once. Later builds work offline.
+- Network access for the first `nari build`, which downloads crates once. Later builds work offline.
 - Optional: Node 22+ and a Chromium (Playwright's headless shell or Chrome) for the browser journey test, and `c++` for the C++ kernel benchmark.
 
 ## Install
 
-Frame compiles apps with Cargo, so install Rust with [rustup](https://rustup.rs) first.
+Imanari compiles apps with Cargo, so install Rust with [rustup](https://rustup.rs) first.
 
-Prebuilt binaries for macOS (Apple silicon) and Linux (x86_64 and arm64) are attached to each [release](https://github.com/Alibek10599/frame/releases/latest). On macOS:
+Prebuilt binaries for macOS (Apple silicon) and Linux (x86_64 and arm64) are attached to each [release](https://github.com/Alibek10599/imanari/releases/latest). On macOS:
 
 ```sh
-curl -fsSL https://github.com/Alibek10599/frame/releases/latest/download/frame-aarch64-apple-darwin.tar.gz | tar -xz
-sudo install frame-aarch64-apple-darwin/frame /usr/local/bin/frame
+curl -fsSL https://github.com/Alibek10599/imanari/releases/latest/download/imanari-aarch64-apple-darwin.tar.gz | tar -xz
+sudo install imanari-aarch64-apple-darwin/nari /usr/local/bin/nari
 ```
 
-On Linux, use `frame-x86_64-unknown-linux-gnu` or `frame-aarch64-unknown-linux-gnu` instead. Each archive has a `.sha256` file next to it.
+On Linux, use `imanari-x86_64-unknown-linux-gnu` or `imanari-aarch64-unknown-linux-gnu` instead. Each archive has a `.sha256` file next to it.
 
 To build from source instead:
 
 ```sh
-cargo install --locked --git https://github.com/Alibek10599/frame frame
+cargo install --locked --git https://github.com/Alibek10599/imanari imanari
 ```
 
-From a checkout, `cargo build --release` puts the CLI at `target/release/frame`.
+From a checkout, `cargo build --release` puts the CLI at `target/release/nari`.
 
 ## Run the reference app
 
 ```sh
 cd examples/fieldwork
-frame check                           # parse, type, reference and policy checks (offline)
-frame fmt --check                     # deterministic formatting; comments are preserved
-frame build                           # writes .frame/{ir.json,graph.json,generated/,build/,manifest.json}
-frame dev                             # builds, starts the supervisor and app, prints a one-time bootstrap URL
+nari check                           # parse, type, reference and policy checks (offline)
+nari fmt --check                     # deterministic formatting; comments are preserved
+nari build                           # writes .nari/{ir.json,graph.json,generated/,build/,manifest.json}
+nari dev                             # builds, starts the supervisor and app, prints a one-time bootstrap URL
 ```
 
 Open the printed `open: http://127.0.0.1:7331/#bootstrap=…` URL. The page exchanges the token, removes it from the URL, and sets an HttpOnly, SameSite=Strict session. The dev bar switches between the two seeded users (User A and User B). Stop with Ctrl-C.
 
-The first `frame build` compiles Axum, SQLx and Tokio in release mode, which takes about a minute. To share that cache between projects, set `FRAME_TARGET_DIR`.
+The first `nari build` compiles Axum, SQLx and Tokio in release mode, which takes about a minute. To share that cache between projects, set `NARI_TARGET_DIR`.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `frame init NAME` | Create `NAME/` with an example app and protected tests; never overwrites |
-| `frame fmt [--check]` | Format deterministically, preserving comments; refuses output that changes semantics |
-| `frame check` | Validate offline, with diagnostics that carry file, line, column, byte span and node id |
-| `frame build` | Write IR, graph, Rust backend, web files and the artifact manifest, then compile |
-| `frame dev [--acknowledge]` | Run the supervisor and app; `--acknowledge` clears `StoppedNeedsAttention` and keeps the restart history |
-| `frame test` | Run generated contract checks plus the protected tests in `acceptance/*.json`; failures become incidents |
-| `frame context ID [--max-bytes N]` | Write `.frame/context/<id>/context.md` and `manifest.json` |
-| `frame diff --base PATH` | Diff behavior and dependencies against another snapshot |
-| `frame status` / `frame incidents [--id ID]` | Show supervisor state and redacted incident records |
-| `frame repair ID --proposer fixture\|file:PATH` | Run the isolated repair pipeline; never releases |
-| `frame apply-repair ID --candidate HASH` | Explicit local apply after rechecking hashes and protected tests |
-| `frame bench [--quick]` | Benchmark report in `.frame/bench/report.json` |
-| `frame plan` / `frame release` | Fail with `E_UNSUPPORTED_FEATURE` in 0.1 |
+| `nari init NAME` | Create `NAME/` with an example app and protected tests; never overwrites |
+| `nari fmt [--check]` | Format deterministically, preserving comments; refuses output that changes semantics |
+| `nari check` | Validate offline, with diagnostics that carry file, line, column, byte span and node id |
+| `nari build` | Write IR, graph, Rust backend, web files and the artifact manifest, then compile |
+| `nari dev [--acknowledge]` | Run the supervisor and app; `--acknowledge` clears `StoppedNeedsAttention` and keeps the restart history |
+| `nari test` | Run generated contract checks plus the protected tests in `acceptance/*.json`; failures become incidents |
+| `nari context ID [--max-bytes N]` | Write `.nari/context/<id>/context.md` and `manifest.json` |
+| `nari diff --base PATH` | Diff behavior and dependencies against another snapshot |
+| `nari status` / `nari incidents [--id ID]` | Show supervisor state and redacted incident records |
+| `nari repair ID --proposer fixture\|file:PATH` | Run the isolated repair pipeline; never releases |
+| `nari apply-repair ID --candidate HASH` | Explicit local apply after rechecking hashes and protected tests |
+| `nari bench [--quick]` | Benchmark report in `.nari/bench/report.json` |
+| `nari plan` / `nari release` | Fail with `E_UNSUPPORTED_FEATURE` in 0.1 |
 
 Every command accepts `--project PATH` and `--json`.
 
@@ -82,10 +82,10 @@ From the repository root:
 
 ```sh
 mkdir /tmp/fw && cp -R examples/fieldwork/. /tmp/fw/
-sed -i '' 's/set = { completed: true };/set = { completed: false };/' /tmp/fw/fieldwork.frame
-frame --project /tmp/fw test                                  # protected test fails; prints the incident id
-frame --project /tmp/fw repair <incident> --proposer fixture  # reproduce, propose, validate in Seatbelt; source untouched
-frame --project /tmp/fw apply-repair <incident> --candidate <hash>
+sed -i '' 's/set = { completed: true };/set = { completed: false };/' /tmp/fw/fieldwork.nari
+nari --project /tmp/fw test                                  # protected test fails; prints the incident id
+nari --project /tmp/fw repair <incident> --proposer fixture  # reproduce, propose, validate in Seatbelt; source untouched
+nari --project /tmp/fw apply-repair <incident> --candidate <hash>
 ```
 
 ## Protected tests
@@ -105,21 +105,21 @@ frame --project /tmp/fw apply-repair <incident> --candidate <hash>
 
 | Variable | Purpose |
 | --- | --- |
-| `FRAME_TARGET_DIR` | Cargo target dir for generated apps (default `.frame/build/target`) |
-| `FRAME_PORT`, `FRAME_DATABASE` | Trusted operator override of the declared port (0 picks a free one) and the database path |
-| `FRAME_FAULT` | Dev and test fault injection: `crash_on_start`, `crash_on_request:<action>`, `crash_before_commit:<action>`, `crash_after_commit:<action>` |
-| `FRAME_MUTATIONS_PER_MINUTE` | Operator override of the per-actor mutation limit (default 60); the check still runs |
-| `FRAME_SANDBOX=none` | Force the no-isolation path (repair reports `SANDBOX_UNAVAILABLE`) |
-| `FRAME_CHROMIUM`, `FRAME_REQUIRE_BROWSER` | Browser for the journey test; with `FRAME_REQUIRE_BROWSER` set, a missing browser fails the test instead of skipping it |
+| `NARI_TARGET_DIR` | Cargo target dir for generated apps (default `.nari/build/target`) |
+| `NARI_PORT`, `NARI_DATABASE` | Trusted operator override of the declared port (0 picks a free one) and the database path |
+| `NARI_FAULT` | Dev and test fault injection: `crash_on_start`, `crash_on_request:<action>`, `crash_before_commit:<action>`, `crash_after_commit:<action>` |
+| `NARI_MUTATIONS_PER_MINUTE` | Operator override of the per-actor mutation limit (default 60); the check still runs |
+| `NARI_SANDBOX=none` | Force the no-isolation path (repair reports `SANDBOX_UNAVAILABLE`) |
+| `NARI_CHROMIUM`, `NARI_REQUIRE_BROWSER` | Browser for the journey test; with `NARI_REQUIRE_BROWSER` set, a missing browser fails the test instead of skipping it |
 
 ## Tests
 
 ```sh
 cargo test --workspace     # language, runtime, browser, agent workflow, recovery and repair suites
-frame bench                # full benchmark (release CLI recommended: target/release/frame)
+nari bench                # full benchmark (release CLI recommended: target/release/nari)
 ```
 
-The suites build generated apps into `target/frame-apps` and run real HTTP against real SQLite, real worker processes, and real Seatbelt sandboxes. Nothing in them is mocked.
+The suites build generated apps into `target/nari-apps` and run real HTTP against real SQLite, real worker processes, and real Seatbelt sandboxes. Nothing in them is mocked.
 
 ## Layout
 
@@ -128,8 +128,8 @@ The suites build generated apps into `target/frame-apps` and run real HTTP again
 | `src/syntax.rs`, `src/fmt.rs` | Parser with byte spans and comments, and the formatter |
 | `src/semantic.rs`, `src/ir.rs` | Schema, type and reference checks, typed IR, graph, canonical JSON and SHA-256 hashes |
 | `src/codegen.rs`, `src/web/` | Rust handler generation (parameterized SQL, structurally escaped literals) and web assets |
-| `src/pipeline.rs` | Artifacts, cargo invocation as an argv array, and mapping rustc errors back to Frame spans |
-| `runtime/` | `frame-runtime`: sessions, CSRF/Origin/Host checks, limits, idempotent transactions, readiness |
+| `src/pipeline.rs` | Artifacts, cargo invocation as an argv array, and mapping rustc errors back to Imanari spans |
+| `runtime/` | `imanari-runtime`: sessions, CSRF/Origin/Host checks, limits, idempotent transactions, readiness |
 | `src/testrun.rs`, `src/launch.rs`, `src/http.rs` | Contract checks, the protected test runner, app launcher, and a minimal HTTP client |
 | `src/context.rs`, `src/diff.rs`, `src/patch.rs`, `src/progress.rs` | Context bundles, behavior diff, patch preconditions, and resumable task records |
 | `src/supervisor.rs` | Supervisor, control DB, restart budget, reconciliation, and incidents |
@@ -171,7 +171,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues privately as desc
 
 ## License
 
-Frame is dual-licensed under either of
+Imanari is dual-licensed under either of
 
 - Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
 - MIT license ([LICENSE-MIT](LICENSE-MIT))

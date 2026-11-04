@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::Command;
 
 fn chromium() -> Option<String> {
-    let mut candidates = vec![std::env::var("FRAME_CHROMIUM").unwrap_or_default()];
+    let mut candidates = vec![std::env::var("NARI_CHROMIUM").unwrap_or_default()];
     if let Some(home) = std::env::var_os("HOME") {
         let cache = Path::new(&home).join("Library/Caches/ms-playwright");
         let mut shells: Vec<_> = std::fs::read_dir(&cache)
@@ -49,8 +49,8 @@ fn browser_journey_create_reload_complete_isolate() {
         .is_ok_and(|o| o.status.success());
     let Some(chrome) = chromium().filter(|_| node_ok) else {
         assert!(
-            std::env::var("FRAME_REQUIRE_BROWSER").is_err(),
-            "FRAME_REQUIRE_BROWSER is set but node or chromium is unavailable"
+            std::env::var("NARI_REQUIRE_BROWSER").is_err(),
+            "NARI_REQUIRE_BROWSER is set but node or chromium is unavailable"
         );
         eprintln!("BROWSER_UNAVAILABLE: node or chromium not found; browser journey not run");
         return;

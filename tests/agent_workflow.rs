@@ -1,17 +1,17 @@
 mod common;
 
 use common::*;
-use frame::context;
-use frame::patch::{self, Edit, Patch};
+use imanari::context;
+use imanari::patch::{self, Edit, Patch};
 use serde_json::json;
 
 const TARGET: &str = "fieldwork/action/complete_task";
 
-fn compiled(src: &str) -> frame::ir::Compiled {
-    frame::compile(src, "fieldwork.frame").unwrap().0
+fn compiled(src: &str) -> imanari::ir::Compiled {
+    imanari::compile(src, "fieldwork.nari").unwrap().0
 }
 
-fn set_patch(src: &str, c: &frame::ir::Compiled, from: &str, to: &str) -> Patch {
+fn set_patch(src: &str, c: &imanari::ir::Compiled, from: &str, to: &str) -> Patch {
     let start = src.find(from).expect("fragment present");
     Patch {
         schema: patch::SCHEMA.into(),
@@ -20,7 +20,7 @@ fn set_patch(src: &str, c: &frame::ir::Compiled, from: &str, to: &str) -> Patch 
         affected_nodes: vec![TARGET.into()],
         allowed_scope: vec![TARGET.into()],
         edits: vec![Edit {
-            file: "fieldwork.frame".into(),
+            file: "fieldwork.nari".into(),
             start,
             end: start + from.len(),
             replacement: to.into(),
@@ -84,7 +84,7 @@ fn context_includes_required_contracts_and_omits_unrelated_implementations() {
         m["omitted"][0]["expand"]
             .as_str()
             .unwrap()
-            .starts_with("frame context ")
+            .starts_with("nari context ")
     );
     let again = context::extract(&p, &c, FIXTURE, TARGET, context::DEFAULT_MAX_BYTES).unwrap();
     assert_eq!(again.markdown, b.markdown, "deterministic");
@@ -105,7 +105,7 @@ fn oversized_mandatory_context_fails_without_truncation() {
         .map(|r| r["id"].as_str().unwrap())
         .collect();
     assert!(required.contains(&TARGET) && required.contains(&"fieldwork/entity/Task"));
-    let out = std::process::Command::new(env!("CARGO_BIN_EXE_frame"))
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_nari"))
         .args([
             "--project",
             p.dir.to_str().unwrap(),
@@ -139,7 +139,7 @@ fn patch_preconditions_and_scope_are_enforced() {
         "set = { completed: true };",
         "set = { completed: false };",
     );
-    let applied = patch::apply_text(&good, "fieldwork.frame", FIXTURE).unwrap();
+    let applied = patch::apply_text(&good, "fieldwork.nari", FIXTURE).unwrap();
     let cand = compiled(&applied);
     assert_eq!(
         patch::check_scope(&c, &cand, &good.allowed_scope).unwrap(),
@@ -148,7 +148,7 @@ fn patch_preconditions_and_scope_are_enforced() {
 
     let edited = FIXTURE.replace("app fieldwork {", "// a comment-only edit\napp fieldwork {");
     assert_eq!(
-        patch::apply_text(&good, "fieldwork.frame", &edited)
+        patch::apply_text(&good, "fieldwork.nari", &edited)
             .unwrap_err()
             .code,
         "PATCH_STALE"
@@ -158,15 +158,15 @@ fn patch_preconditions_and_scope_are_enforced() {
         "acceptance/complete_task.json",
         "Cargo.toml",
         "Cargo.lock",
-        "../fieldwork.frame",
+        "../fieldwork.nari",
         "/etc/passwd",
-        ".frame/generated/app/src/main.rs",
-        "other.frame",
+        ".nari/generated/app/src/main.rs",
+        "other.nari",
     ] {
         let mut p = good.clone();
         p.edits[0].file = file.into();
         assert_eq!(
-            patch::apply_text(&p, "fieldwork.frame", FIXTURE)
+            patch::apply_text(&p, "fieldwork.nari", FIXTURE)
                 .unwrap_err()
                 .code,
             "PATCH_PATH_FORBIDDEN",
@@ -176,8 +176,8 @@ fn patch_preconditions_and_scope_are_enforced() {
 
     let scope = |from: &str, to: &str| {
         let p = set_patch(FIXTURE, &c, from, to);
-        let text = patch::apply_text(&p, "fieldwork.frame", FIXTURE).unwrap();
-        match frame::compile(&text, "fieldwork.frame") {
+        let text = patch::apply_text(&p, "fieldwork.nari", FIXTURE).unwrap();
+        match imanari::compile(&text, "fieldwork.nari") {
             Ok((cand, _)) => {
                 patch::check_scope(&c, &cand, &p.allowed_scope)
                     .unwrap_err()
@@ -228,7 +228,7 @@ fn behavior_diff_classifies_bounds_owner_and_unknown_changes() {
         "    input title {\n      type = Text;\n      min_length = 1;\n      max_length = 100;",
         1,
     );
-    let d = frame::diff::diff(&base, &compiled(&narrowed));
+    let d = imanari::diff::diff(&base, &compiled(&narrowed));
     let ch = &d["changes"][0];
     assert_eq!(ch["node"], "fieldwork/action/create_task/input/title");
     assert_eq!(ch["category"], "input/output");
@@ -248,7 +248,7 @@ fn behavior_diff_classifies_bounds_owner_and_unknown_changes() {
         .replace("owner_field = owner;", "owner_field = assignee;")
         .replace("field owner {", "field assignee {")
         .replace("owner: @actor.id,", "assignee: @actor.id,");
-    let d = frame::diff::diff(&base, &compiled(&owner));
+    let d = imanari::diff::diff(&base, &compiled(&owner));
     let access = d["changes"]
         .as_array()
         .unwrap()
@@ -274,17 +274,17 @@ fn behavior_diff_classifies_bounds_owner_and_unknown_changes() {
     assert_eq!(d["full_validation_required"], true);
 
     let commented = FIXTURE.replace("app fieldwork {", "// note\napp fieldwork {");
-    let d = frame::diff::diff(&base, &compiled(&commented));
+    let d = imanari::diff::diff(&base, &compiled(&commented));
     assert_eq!(d["behavior_changed"], false);
     assert_eq!(d["changes"], json!([]));
 
     let mut odd = base.clone();
-    odd.graph.edges.push(frame::ir::Edge {
+    odd.graph.edges.push(imanari::ir::Edge {
         from: "fieldwork/action/list_tasks".into(),
         role: "mystery".into(),
         to: "fieldwork/entity/Task".into(),
     });
-    let d = frame::diff::diff(&base, &odd);
+    let d = imanari::diff::diff(&base, &odd);
     assert_eq!(d["full_validation_required"], true);
     assert!(
         d["changes"]
@@ -299,19 +299,19 @@ fn behavior_diff_classifies_bounds_owner_and_unknown_changes() {
 fn task_record_resumes_only_when_hashes_and_evidence_match() {
     let p = write_project("progress", FIXTURE);
     let c = compiled(FIXTURE);
-    let mut rec = frame::progress::TaskRecord::new(
+    let mut rec = imanari::progress::TaskRecord::new(
         "demo-1",
         "fix complete_task",
         &c.source_sha256,
         &c.graph_sha256,
     );
     rec.completed.push("captured context".into());
-    rec.outstanding_checks.push("frame test".into());
+    rec.outstanding_checks.push("nari test".into());
     rec.add_evidence(&p.dir, "acceptance/complete_task.json", "protected-test")
         .unwrap();
     let path = p.dir.join("task.json");
     rec.save(&path).unwrap();
-    let loaded = frame::progress::TaskRecord::load(&path).unwrap();
+    let loaded = imanari::progress::TaskRecord::load(&path).unwrap();
     assert_eq!(loaded, rec);
     assert!(
         loaded
@@ -327,11 +327,11 @@ fn task_record_resumes_only_when_hashes_and_evidence_match() {
 fn macos_metadata_files_are_ignored_by_project_discovery() {
     let p = write_project("appledouble", FIXTURE);
     let junk = [0u8, 5, 22, 7, 0, 2, 0, 0];
-    std::fs::write(p.dir.join("._fieldwork.frame"), junk).unwrap();
+    std::fs::write(p.dir.join("._fieldwork.nari"), junk).unwrap();
     std::fs::write(p.dir.join("acceptance/._complete_task.json"), junk).unwrap();
-    let located = frame::Project::locate(Some(p.dir.clone())).unwrap();
-    assert_eq!(located.file_name, "fieldwork.frame");
-    let tests = frame::testrun::load_protected(&p.dir).unwrap();
+    let located = imanari::Project::locate(Some(p.dir.clone())).unwrap();
+    assert_eq!(located.file_name, "fieldwork.nari");
+    let tests = imanari::testrun::load_protected(&p.dir).unwrap();
     assert_eq!(tests.len(), 3);
 }
 
@@ -341,7 +341,7 @@ fn relative_project_paths_resolve_to_absolute_directories() {
     let cwd = std::env::current_dir().unwrap();
     let rel = p.dir.strip_prefix(&cwd).unwrap().to_path_buf();
     assert!(rel.is_relative());
-    let located = frame::Project::locate(Some(rel)).unwrap();
+    let located = imanari::Project::locate(Some(rel)).unwrap();
     assert!(located.dir.is_absolute());
     assert_eq!(located.dir, p.dir);
 }

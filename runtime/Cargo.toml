@@ -1,12 +1,12 @@
 [package]
-name = "frame-runtime"
+name = "imanari-runtime"
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.97"
 publish = false
-repository = "https://github.com/Alibek10599/frame"
-description = "Runtime interface linked by generated Frame applications"
+repository = "https://github.com/Alibek10599/imanari"
+description = "Runtime interface linked by generated Imanari applications"
 
 [dependencies]
 axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "tokio"] }

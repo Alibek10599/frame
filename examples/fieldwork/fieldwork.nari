@@ -1,4 +1,4 @@
-frame "0.1";
+imanari "0.1";
 
 app fieldwork {
   targets = [web];
@@ -100,7 +100,7 @@ app fieldwork {
   runtime local {
     bind = "127.0.0.1";
     port = 7331;
-    database = ".frame/app.db";
+    database = ".nari/app.db";
     request_limit_bytes = 65536;
     request_timeout_ms = 5000;
   }

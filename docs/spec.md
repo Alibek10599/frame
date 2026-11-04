@@ -1,26 +1,26 @@
-# Frame: system language and adaptive runtime
+# Imanari: system language and adaptive runtime
 
 Version: 0.1-draft. Date: 2026-11-02. Status: draft specification. 0.1 is implemented in this repository as a developer preview.
 
 ## 1. Product contract
 
-Frame is a human-readable language for describing an application as a connected system: data, capabilities, user interfaces, workflows, infrastructure, recovery policies, and operational evidence. Agents should implement changes using bounded, versioned context rather than reconstructing the project from conversation history.
+Imanari is a human-readable language for describing an application as a connected system: data, capabilities, user interfaces, workflows, infrastructure, recovery policies, and operational evidence. Agents should implement changes using bounded, versioned context rather than reconstructing the project from conversation history.
 
-The long-term product must support web, iOS, Android, backend services, and infrastructure end to end. It must recover from known operational failures, propose and validate repairs, and retain evidence that improves subsequent decisions. It must work both by changing Frame code and by controlling systems through declared adapters without changing their implementation.
+The long-term product must support web, iOS, Android, backend services, and infrastructure end to end. It must recover from known operational failures, propose and validate repairs, and retain evidence that improves subsequent decisions. It must work both by changing Imanari code and by controlling systems through declared adapters without changing their implementation.
 
-Security and performance are requirements, not marketing guarantees. Frame targets Rust-style memory and data-race safety in its native implementation and competitive native performance on comparable workloads. It does not claim that every application is secure or that every workload matches C++. Browser rendering, networks, databases, third-party libraries, and native platform bridges remain part of the actual system.
+Security and performance are requirements, not marketing guarantees. Imanari targets Rust-style memory and data-race safety in its native implementation and competitive native performance on comparable workloads. It does not claim that every application is secure or that every workload matches C++. Browser rendering, networks, databases, third-party libraries, and native platform bridges remain part of the actual system.
 
 MUST, SHOULD, and MAY are normative. A milestone is complete only when its acceptance checks pass. Unsupported syntax and features MUST produce diagnostics rather than silently degrade to something else.
 
 ## 2. Repository boundary and deliverable
 
-Frame is a standalone project. It MUST have its own Cargo workspace, lockfile, toolchain pin, tests, and README. This specification covers local implementation and verification. Publishing packages, provisioning paid resources, and deploying externally are outside the 0.1 deliverable.
+Imanari is a standalone project. It MUST have its own Cargo workspace, lockfile, toolchain pin, tests, and README. This specification covers local implementation and verification. Publishing packages, provisioning paid resources, and deploying externally are outside the 0.1 deliverable.
 
 ## 3. Release boundaries
 
 ### 0.1: runnable local vertical slice
 
-Implement a real `.frame` parser, semantic checks, canonical intermediate representation (IR), Rust backend generation, a browser frontend, SQLite persistence, local development identity, context extraction, structured diagnostics, bounded process recovery, incident memory, and a reproducible isolated repair demonstration.
+Implement a real `.nari` parser, semantic checks, canonical intermediate representation (IR), Rust backend generation, a browser frontend, SQLite persistence, local development identity, context extraction, structured diagnostics, bounded process recovery, incident memory, and a reproducible isolated repair demonstration.
 
 The reference application is Fieldwork: two users can create, list, and complete their own tasks. The complete operation checks a record revision to prevent lost updates. A worker can crash and recover without losing committed tasks. A seeded bug can be reproduced, patched in an isolated workspace, validated, and recorded. No live LLM account is required to run the acceptance suite.
 
@@ -51,10 +51,10 @@ Dependencies and the operating system may contain unsafe code; forbidding it in 
 
 ### 5.1 Syntax
 
-`fieldwork.frame` accompanying this document is the normative positive fixture. Earlier conversational examples were sketches and are superseded by this grammar.
+`fieldwork.nari` accompanying this document is the normative positive fixture. Earlier conversational examples were sketches and are superseded by this grammar.
 
 ```ebnf
-document    = "frame", string, ";", "app", identifier, "{", entry*, "}" ;
+document    = "imanari", string, ";", "app", identifier, "{", entry*, "}" ;
 entry       = property | block ;
 property    = identifier, "=", value, ";" ;
 block       = identifier, identifier, "{", entry*, "}" ;
@@ -89,7 +89,7 @@ Each action has `kind`, `entity`, and `access = signed_in`. Optional repeated `i
 
 For list actions, `limit` and `after` are reserved transport inputs and cannot be author-defined: limit defaults to 50 and is 1..100; after is an optional canonical UUID. Results sort by id ascending, filter strictly after the cursor, and return `{items, next_cursor}`. The cursor is a position, never permission to see another user's rows. Concurrent inserts may require a refresh to observe; pagination is not a snapshot guarantee.
 
-0.1 has no arbitrary user Rust or JavaScript function bodies. These small operations are the first executable language subset, not the final limit of Frame. Later native extensions must declare effects; an in-process Rust declaration alone cannot enforce capabilities against malicious code.
+0.1 has no arbitrary user Rust or JavaScript function bodies. These small operations are the first executable language subset, not the final limit of Imanari. Later native extensions must declare effects; an in-process Rust declaration alone cannot enforce capabilities against malicious code.
 
 ### 5.3 Screens
 
@@ -103,7 +103,7 @@ Generate loading, empty, error, and success states; prevent double submission wh
 
 ### 5.4 Runtime and policy declarations
 
-`identity NAME { mode = local_dev; }` is the only 0.1 identity mode. `runtime` properties are `bind` (must be 127.0.0.1), `port` (1024..65535), `database` (relative path under `.frame/`), `request_limit_bytes` (1..65536), and `request_timeout_ms` (100..30000). Reject symlink or traversal escapes for generated files and database paths. Persistent files use restrictive permissions where supported.
+`identity NAME { mode = local_dev; }` is the only 0.1 identity mode. `runtime` properties are `bind` (must be 127.0.0.1), `port` (1024..65535), `database` (relative path under `.nari/`), `request_limit_bytes` (1..65536), and `request_timeout_ms` (100..30000). Reject symlink or traversal escapes for generated files and database paths. Persistent files use restrictive permissions where supported.
 
 `recovery` declares `target = backend`, `max_restarts`, `window_seconds`, `backoff_ms`, and `after_exhaustion = stop`. Bounds: restarts 0..10, window 1..3600 seconds, backoffs 0..60000 ms. Array length must equal max_restarts. Restart budgets are persisted and cannot reset merely by restarting the supervisor.
 
@@ -111,13 +111,13 @@ Generate loading, empty, error, and success states; prevent double submission wh
 
 ## 6. Compiler, graph, and artifacts
 
-Pipeline: parse → validate schema/types/references → construct typed IR → compute dependency graph → emit native backend and web files → compile → package manifest. Diagnostics must identify the originating Frame span even when Rust compilation fails; include raw generated compiler output as additional detail.
+Pipeline: parse → validate schema/types/references → construct typed IR → compute dependency graph → emit native backend and web files → compile → package manifest. Diagnostics must identify the originating Imanari span even when Rust compilation fails; include raw generated compiler output as additional detail.
 
 The canonical IR includes schema/compiler versions, stable IDs, typed properties, inferred contracts/effects, resolved references, source mappings, and forward/reverse dependency edges. JSON encoding must be canonical: sorted object keys, deterministic declaration ordering, no timestamps or absolute host paths in semantic hashes. Record source byte hashes separately from semantic hashes. Hash with SHA-256. Changes to comments need not change generated behavior but must invalidate a source-based patch precondition.
 
 Edges must cover action→entity, screen→action, identity→protected operations, runtime→affected artifacts, and recovery/repair→their targets. Store dependency roles, so changes to authentication invalidate all affected actions even if their own text is unchanged. A new or unknown edge class requires conservative validation, not optimistic skipping.
 
-Artifacts live under `.frame/`: `ir.json`, `graph.json`, `generated/`, `build/`, `context/`, `incidents/`, and runtime databases. This directory is ignored by version control except explicitly exported evidence. Generated files are disposable, carry source/version provenance, and must never be edited as the canonical application source. Dependency locks and the source manifest remain tracked outside generated output.
+Artifacts live under `.nari/`: `ir.json`, `graph.json`, `generated/`, `build/`, `context/`, `incidents/`, and runtime databases. This directory is ignored by version control except explicitly exported evidence. Generated files are disposable, carry source/version provenance, and must never be edited as the canonical application source. Dependency locks and the source manifest remain tracked outside generated output.
 
 Compile-time work should eliminate repeated schema parsing and graph traversal from the request path. Retain necessary input validation, authorization, bounds checks, and transaction checks. Optimization must never remove those checks to satisfy a benchmark.
 
@@ -147,13 +147,13 @@ Apply a default limit of 100 concurrent requests and 60 mutations per actor per 
 
 ### Trust boundaries
 
-The compiler/runtime, toolchain, dependencies, identity provider, and release authority are trusted components. Frame source, HTTP inputs, telemetry strings, repair proposals, and retrieved incident content are untrusted data at their boundaries. Log text can never instruct a repair tool to run arbitrary commands. Generated Rust string literals must be escaped structurally, not interpolated as code fragments.
+The compiler/runtime, toolchain, dependencies, identity provider, and release authority are trusted components. Imanari source, HTTP inputs, telemetry strings, repair proposals, and retrieved incident content are untrusted data at their boundaries. Log text can never instruct a repair tool to run arbitrary commands. Generated Rust string literals must be escaped structurally, not interpolated as code fragments.
 
 Do not invoke shells for generated build/run commands; pass executable and argument arrays. A repair agent must not receive production secrets or authority to rewrite its own guardrails. Safe Rust prevents classes of memory misuse, not SQL injection, broken authorization, resource exhaustion, supply-chain compromise, or business mistakes. Explicit checks above remain mandatory.
 
 ## 8. Context as a build artifact
 
-`frame context <stable-id>` must emit a readable `context.md` and machine-readable `manifest.json`. Include:
+`nari context <stable-id>` must emit a readable `context.md` and machine-readable `manifest.json`. Include:
 
 1. Target source spans and inferred contract/effects.
 2. Required entity definitions, applicable permissions and system constraints.
@@ -223,25 +223,25 @@ These are roadmap contracts, not 0.1 implementation requirements:
 
 ## 11. CLI contract
 
-All commands accept `--project PATH` and `--json`; default project is the current directory containing exactly one `.frame` file. Human output is concise. JSON diagnostics contain `code`, `severity`, `message`, `node_id`, `file`, `span`, and `details`. Exit codes: 0 success, 1 validation/check failure, 2 usage/unsupported feature, 3 execution/environment failure, 4 stale precondition or policy rejection. Do not leak secrets in JSON mode.
+All commands accept `--project PATH` and `--json`; default project is the current directory containing exactly one `.nari` file. Human output is concise. JSON diagnostics contain `code`, `severity`, `message`, `node_id`, `file`, `span`, and `details`. Exit codes: 0 success, 1 validation/check failure, 2 usage/unsupported feature, 3 execution/environment failure, 4 stale precondition or policy rejection. Do not leak secrets in JSON mode.
 
 | Command | Required behavior |
 | --- | --- |
-| `frame init NAME` | Create a non-overwriting standalone example project |
-| `frame fmt [--check]` | Deterministic source formatting, preserving comments |
-| `frame check` | Parse/type/reference/policy validation, no server or network |
-| `frame build` | Emit IR, graph, native app, browser files, and artifact manifest |
-| `frame dev` | Build then run supervisor/app; local development bootstrap |
-| `frame test` | Run generated contract checks and protected project tests |
-| `frame context ID [--max-bytes N]` | Emit versioned context and inclusion manifest |
-| `frame diff --base PATH` | Compare two source snapshots by behavior and dependencies |
-| `frame status` | Read supervisor state and recent incident summary |
-| `frame incidents [--id ID]` | Read redacted records and evidence references |
-| `frame repair ID --proposer fixture` | Run isolated repair pipeline, never release |
-| `frame apply-repair ID --candidate HASH` | Explicitly apply validated local candidate after rechecks |
-| `frame bench` | Reproducible compiler/runtime/context benchmark report |
+| `nari init NAME` | Create a non-overwriting standalone example project |
+| `nari fmt [--check]` | Deterministic source formatting, preserving comments |
+| `nari check` | Parse/type/reference/policy validation, no server or network |
+| `nari build` | Emit IR, graph, native app, browser files, and artifact manifest |
+| `nari dev` | Build then run supervisor/app; local development bootstrap |
+| `nari test` | Run generated contract checks and protected project tests |
+| `nari context ID [--max-bytes N]` | Emit versioned context and inclusion manifest |
+| `nari diff --base PATH` | Compare two source snapshots by behavior and dependencies |
+| `nari status` | Read supervisor state and recent incident summary |
+| `nari incidents [--id ID]` | Read redacted records and evidence references |
+| `nari repair ID --proposer fixture` | Run isolated repair pipeline, never release |
+| `nari apply-repair ID --candidate HASH` | Explicitly apply validated local candidate after rechecks |
+| `nari bench` | Reproducible compiler/runtime/context benchmark report |
 
-`plan`, `release`, and mobile build targets return explicit unsupported-feature errors until their milestones exist. `frame check` remains offline after installing the CLI. `build` may need dependency installation initially, and must report that distinctly from source validation failure.
+`plan`, `release`, and mobile build targets return explicit unsupported-feature errors until their milestones exist. `nari check` remains offline after installing the CLI. `build` may need dependency installation initially, and must report that distinctly from source validation failure.
 
 Behavior diff reports added/removed capabilities, input/output changes, access changes, data migrations, affected consumers, runtime changes, and recovery/repair authority changes. Any unclassified semantic difference is shown as unknown and triggers full validation; do not call it harmless.
 
@@ -250,10 +250,10 @@ Behavior diff reports added/removed capabilities, input/output changes, access c
 Goals are provisional acceptance budgets, not measured claims. Use release builds on the same machine with recorded CPU, OS, compiler flags, dependency versions, data sizes, warmup, repetitions, concurrency, and raw samples. Report median, p95, throughput, peak memory, and error rate as appropriate. Separate clean compilation, incremental compilation, request handling, database, browser, and model/proposer time.
 
 - Compiler/graph: check a generated 1,000-action fixture in ≤1 second median on a documented developer machine; warm context extraction ≤100 ms median. Include correctness checks and report hardware-dependent misses honestly.
-- Native runtime: compare generated Frame handlers with hand-written Rust using the same HTTP stack, database, auth, validation, idempotency, and semantics. Target ≤15% p95 latency overhead and ≤20% peak-memory overhead under identical load; record throughput too. If measured durations are below timer resolution, batch operations.
+- Native runtime: compare generated Imanari handlers with hand-written Rust using the same HTTP stack, database, auth, validation, idempotency, and semantics. Target ≤15% p95 latency overhead and ≤20% peak-memory overhead under identical load; record throughput too. If measured durations are below timer resolution, batch operations.
 - C++ comparison: include a small equivalent bounded validation/transformation kernel in optimized C++ and generated Rust. Match integer/overflow/error semantics and inputs, verify equal outputs, and target within 20% runtime on that kernel. Report the workload and variance. This does not establish whole-stack C++ parity. If a C++ toolchain is absent, mark the comparison not measured rather than passed.
 - No LLM call, repair decision, source parsing, or unbounded incident retrieval on the normal request path. Batch or queue telemetry with explicit capacity and dropped-event counters; audit-critical recovery transitions persist before action.
-- Agent iteration: script the same representative changes against a baseline hand-written app and Frame. Report context bytes, bytes of changed source, checks run, elapsed time, failures, and successful fresh-agent continuation. Do not claim model token savings without actual token counts from a named tokenizer/provider.
+- Agent iteration: script the same representative changes against a baseline hand-written app and Imanari. Report context bytes, bytes of changed source, checks run, elapsed time, failures, and successful fresh-agent continuation. Do not claim model token savings without actual token counts from a named tokenizer/provider.
 
 Use at least five measured runs after warmup. If budgets fail, profile and record the cause; do not weaken security, omit validation from one baseline, or cherry-pick runs. Functional milestones may be demonstrated with documented performance misses, but the performance gate remains open.
 
@@ -300,4 +300,4 @@ Complete these milestones in order. If a required external facility is unavailab
 - Durable workflow replay has explicit requirements: [Temporal durable execution](https://learn.temporal.io/tutorials/go/background-check/durable-execution/).
 - Selected implementation libraries: [Axum](https://docs.rs/axum/latest/axum/) and [SQLx](https://docs.rs/sqlx/latest/sqlx/). Resolve compatible versions when implementing and pin them.
 
-Frame is a working name, not a trademark or package-name availability claim. The proposed combination is not a claim that no existing system has related ideas. No compiler, self-healing system, universal security guarantee, or C++ performance result has been delivered by this document alone.
+Imanari is a working name, not a trademark or package-name availability claim. The proposed combination is not a claim that no existing system has related ideas. No compiler, self-healing system, universal security guarantee, or C++ performance result has been delivered by this document alone.

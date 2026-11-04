@@ -39,11 +39,11 @@ impl AppProcess {
             cmd.env_clear().env("PATH", "/usr/bin:/bin");
         }
         cmd.current_dir(&o.cwd)
-            .env("FRAME_DATABASE", &o.database)
-            .env("FRAME_PORT", o.port.to_string())
-            .env_remove("FRAME_FAULT")
-            .env_remove("FRAME_OWNER_TOKEN")
-            .env_remove("FRAME_SUPERVISED")
+            .env("NARI_DATABASE", &o.database)
+            .env("NARI_PORT", o.port.to_string())
+            .env_remove("NARI_FAULT")
+            .env_remove("NARI_OWNER_TOKEN")
+            .env_remove("NARI_SUPERVISED")
             .stdin(Stdio::null())
             .stdout(Stdio::piped());
         for (k, v) in &o.env {
@@ -75,13 +75,13 @@ impl AppProcess {
         loop {
             match rx.recv_timeout(Duration::from_secs(30)) {
                 Ok(line) => {
-                    if let Some(url) = line.strip_prefix("FRAME_BOOTSTRAP ") {
+                    if let Some(url) = line.strip_prefix("NARI_BOOTSTRAP ") {
                         bootstrap = url
                             .rsplit("#bootstrap=")
                             .next()
                             .unwrap_or_default()
                             .to_string();
-                    } else if let Some(rest) = line.strip_prefix("FRAME_READY ") {
+                    } else if let Some(rest) = line.strip_prefix("NARI_READY ") {
                         let ready: Json = serde_json::from_str(rest).unwrap_or(Json::Null);
                         let port = ready["port"].as_u64().unwrap_or(0) as u16;
                         let instance = ready["instance"].as_str().unwrap_or_default().to_string();
@@ -92,7 +92,7 @@ impl AppProcess {
                             bootstrap,
                             instance,
                         });
-                    } else if line.starts_with("FRAME_STOP ") {
+                    } else if line.starts_with("NARI_STOP ") {
                         let _ = child.wait();
                         return Err(format!("app stopped during startup: {line}"));
                     }
@@ -141,7 +141,7 @@ pub fn dev_sessions(port: u16, bootstrap: &str) -> Result<(Session, Session), St
     let r = http::request(
         port,
         "POST",
-        "/_frame/bootstrap",
+        "/_nari/bootstrap",
         &[("Content-Type", "application/json"), ("Origin", &o)],
         body.as_bytes(),
         TIMEOUT,
@@ -153,13 +153,13 @@ pub fn dev_sessions(port: u16, bootstrap: &str) -> Result<(Session, Session), St
     let dev = r
         .cookies()
         .into_iter()
-        .find(|(k, _)| k == "frame_dev")
-        .map(|(_, v)| format!("frame_dev={v}"))
+        .find(|(k, _)| k == "nari_dev")
+        .map(|(_, v)| format!("nari_dev={v}"))
         .ok_or("bootstrap returned no controller cookie")?;
     let s = http::request(
         port,
         "GET",
-        "/_frame/session",
+        "/_nari/session",
         &[("Cookie", &dev)],
         b"",
         TIMEOUT,
@@ -175,12 +175,12 @@ pub fn dev_sessions(port: u16, bootstrap: &str) -> Result<(Session, Session), St
         let r = http::request(
             port,
             "POST",
-            "/_frame/dev/select",
+            "/_nari/dev/select",
             &[
                 ("Content-Type", "application/json"),
                 ("Origin", &o),
                 ("Cookie", &dev),
-                ("X-Frame-CSRF", &dev_csrf),
+                ("X-Nari-CSRF", &dev_csrf),
             ],
             body.as_bytes(),
             TIMEOUT,
@@ -189,13 +189,13 @@ pub fn dev_sessions(port: u16, bootstrap: &str) -> Result<(Session, Session), St
         let cookie = r
             .cookies()
             .into_iter()
-            .find(|(k, _)| k == "frame_session")
-            .map(|(_, v)| format!("frame_session={v}"))
+            .find(|(k, _)| k == "nari_session")
+            .map(|(_, v)| format!("nari_session={v}"))
             .ok_or("select returned no session cookie")?;
         let s = http::request(
             port,
             "GET",
-            "/_frame/session",
+            "/_nari/session",
             &[("Cookie", &cookie)],
             b"",
             TIMEOUT,
@@ -230,7 +230,7 @@ pub fn call(
     let mut headers: Vec<(&str, &str)> = vec![("Content-Type", "application/json"), ("Origin", &o)];
     if let Some(s) = s {
         headers.push(("Cookie", &s.cookie));
-        headers.push(("X-Frame-CSRF", &s.csrf));
+        headers.push(("X-Nari-CSRF", &s.csrf));
     }
     if let Some(k) = key {
         headers.push(("Idempotency-Key", k));
@@ -252,7 +252,7 @@ pub fn wait_port_closed(port: u16, timeout: Duration) -> bool {
         if http::request(
             port,
             "GET",
-            "/_frame/health",
+            "/_nari/health",
             &[],
             b"",
             Duration::from_millis(200),

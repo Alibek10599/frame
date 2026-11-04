@@ -266,7 +266,7 @@ pub fn diff(base: &Compiled, cur: &Compiled) -> Json {
     }
     let migration = changes.iter().any(|c| c.category == "data migration");
     json!({
-        "schema": "frame-diff/0.1",
+        "schema": "nari-diff/0.1",
         "base": { "source_sha256": base.source_sha256, "semantic_sha256": base.semantic_sha256 },
         "current": { "source_sha256": cur.source_sha256, "semantic_sha256": cur.semantic_sha256 },
         "behavior_changed": base.semantic_sha256 != cur.semantic_sha256,
@@ -310,7 +310,7 @@ pub fn render(d: &Json) -> String {
         out.push_str("data migration: existing databases will stop with MIGRATION_REQUIRED (0.1 has no automatic migrations)\n");
     }
     if d["full_validation_required"] == true {
-        out.push_str("full validation required: run `frame check` and `frame test`\n");
+        out.push_str("full validation required: run `nari check` and `nari test`\n");
     }
     out.trim_end().to_string()
 }

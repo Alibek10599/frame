@@ -317,7 +317,7 @@ pub fn incident(
     outcome: &str,
 ) -> Json {
     json!({
-        "schema": "frame-incident/0.1",
+        "schema": "nari-incident/0.1",
         "incident_id": format!("inc-{}", crate::random_hex(8)),
         "target_id": format!("{}/artifact/{TARGET}", c.app.name),
         "kind": kind,
@@ -325,8 +325,8 @@ pub fn incident(
         "versions": {
             "source_sha256": c.source_sha256,
             "semantic_sha256": c.semantic_sha256,
-            "runtime": "frame-runtime/0.1",
-            "compiler": format!("frame {}", ir::COMPILER_VERSION),
+            "runtime": "imanari-runtime/0.1",
+            "compiler": format!("nari {}", ir::COMPILER_VERSION),
             "policy_sha256": pipeline::policy_hash(c),
             "dependency_lock_sha256": pipeline::lock_hash(),
         },
@@ -360,7 +360,7 @@ pub fn lock(p: &Project) -> Result<Lock, String> {
     match file.try_lock() {
         Ok(()) => Ok(Lock { _file: file }),
         Err(std::fs::TryLockError::WouldBlock) => {
-            Err("another frame supervisor holds the lock for this project".into())
+            Err("another nari supervisor holds the lock for this project".into())
         }
         Err(std::fs::TryLockError::Error(e)) => Err(format!("cannot lock {}: {e}", path.display())),
     }
@@ -370,7 +370,7 @@ fn probe(port: u16) -> Option<Json> {
     http::request(
         port,
         "GET",
-        "/_frame/health",
+        "/_nari/health",
         &[],
         b"",
         Duration::from_millis(800),
@@ -419,9 +419,9 @@ pub async fn reconcile(ctl: &Control, emit: &dyn Fn(&str, Json)) -> Result<(), S
                 let _ = http::request(
                     port,
                     "POST",
-                    "/_frame/control/shutdown",
+                    "/_nari/control/shutdown",
                     &[
-                        ("X-Frame-Owner", &t),
+                        ("X-Nari-Owner", &t),
                         ("Origin", &format!("http://127.0.0.1:{port}")),
                     ],
                     b"",
@@ -472,8 +472,8 @@ pub enum DevExit {
 async fn launch(binary: &Path, cwd: &Path, token: &str) -> Result<Child, String> {
     Command::new(binary)
         .current_dir(cwd)
-        .env("FRAME_OWNER_TOKEN", token)
-        .env("FRAME_SUPERVISED", "1")
+        .env("NARI_OWNER_TOKEN", token)
+        .env("NARI_SUPERVISED", "1")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
@@ -502,11 +502,11 @@ async fn wait_ready(child: &mut Child, emit: &dyn Fn(&str, Json)) -> Waited {
         tokio::select! {
             line = lines.next_line() => match line {
                 Ok(Some(l)) => {
-                    if let Some(url) = l.strip_prefix("FRAME_BOOTSTRAP ") {
+                    if let Some(url) = l.strip_prefix("NARI_BOOTSTRAP ") {
                         emit("bootstrap", json!({ "url": url }));
-                    } else if let Some(r) = l.strip_prefix("FRAME_READY ") {
+                    } else if let Some(r) = l.strip_prefix("NARI_READY ") {
                         return Waited::Ready(serde_json::from_str(r).unwrap_or(Json::Null), lines);
-                    } else if let Some(r) = l.strip_prefix("FRAME_STOP ") {
+                    } else if let Some(r) = l.strip_prefix("NARI_STOP ") {
                         emit("app_stop", serde_json::from_str(r).unwrap_or(Json::Null));
                     }
                 }
@@ -569,7 +569,7 @@ pub async fn run_dev(
     if let Some((State::StoppedNeedsAttention, info)) = ctl.state().await? {
         if !o.acknowledge {
             return Err(format!(
-                "STOPPED_NEEDS_ATTENTION: {}; fix the cause, then run `frame dev --acknowledge` (restart history is kept)",
+                "STOPPED_NEEDS_ATTENTION: {}; fix the cause, then run `nari dev --acknowledge` (restart history is kept)",
                 info["reason"].as_str().unwrap_or("previous failure")
             ));
         }
@@ -631,8 +631,8 @@ pub async fn run_dev(
                         let _ = tokio::task::spawn_blocking(move || http::request(
                             port,
                             "POST",
-                            "/_frame/control/shutdown",
-                            &[("X-Frame-Owner", &t), ("Origin", &format!("http://127.0.0.1:{port}"))],
+                            "/_nari/control/shutdown",
+                            &[("X-Nari-Owner", &t), ("Origin", &format!("http://127.0.0.1:{port}"))],
                             b"",
                             Duration::from_secs(2),
                         )).await;
