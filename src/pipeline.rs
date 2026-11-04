@@ -24,11 +24,11 @@ pub fn package_name(p: &Project, app: &str) -> String {
 pub fn package_name_for(dir: &Path, app: &str) -> String {
     let dir = fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
     let tag = &ir::sha256_hex(dir.to_string_lossy().as_bytes())[..10];
-    format!("frame-app-{}-{tag}", app.replace('_', "-"))
+    format!("nari-app-{}-{tag}", app.replace('_', "-"))
 }
 
 pub fn target_dir(p: &Project) -> PathBuf {
-    std::env::var_os("FRAME_TARGET_DIR")
+    std::env::var_os("NARI_TARGET_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| p.artifacts().join("build").join("target"))
 }
@@ -233,7 +233,7 @@ pub fn compile_app(
             let (code, msg) = if dependency {
                 (
                     "E_DEPENDENCIES",
-                    "dependency installation failed (this is not a source validation error); run `frame build` once with network access",
+                    "dependency installation failed (this is not a source validation error); run `nari build` once with network access",
                 )
             } else {
                 (
@@ -311,9 +311,9 @@ pub fn build_in(p: &Project, c: &Compiled, target: &Path) -> Result<Built, (u8, 
         .map(|b| ir::sha256_hex(&b))
         .unwrap_or_default();
     let manifest = json!({
-        "schema": "frame-artifacts/0.1",
-        "compiler": format!("frame {}", ir::COMPILER_VERSION),
-        "runtime_interface": "frame-runtime/0.1",
+        "schema": "nari-artifacts/0.1",
+        "compiler": format!("nari {}", ir::COMPILER_VERSION),
+        "runtime_interface": "imanari-runtime/0.1",
         "app": c.app.name,
         "source_file": c.file,
         "source_sha256": c.source_sha256,

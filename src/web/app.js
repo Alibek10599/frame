@@ -36,7 +36,7 @@
   }
 
   async function call(action, input, key) {
-    const headers = { "Content-Type": "application/json", "X-Frame-CSRF": session.user.csrf };
+    const headers = { "Content-Type": "application/json", "X-Nari-CSRF": session.user.csrf };
     if (key) headers["Idempotency-Key"] = key;
     let resp;
     try {
@@ -61,7 +61,7 @@
   }
 
   async function loadSession() {
-    const resp = await fetch("/_frame/session", { credentials: "same-origin" });
+    const resp = await fetch("/_nari/session", { credentials: "same-origin" });
     session = resp.ok ? (await resp.json()).data : null;
   }
 
@@ -75,10 +75,10 @@
     }
     select.addEventListener("change", async () => {
       select.disabled = true;
-      await fetch("/_frame/dev/select", {
+      await fetch("/_nari/dev/select", {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json", "X-Frame-CSRF": session.dev.csrf },
+        headers: { "Content-Type": "application/json", "X-Nari-CSRF": session.dev.csrf },
         body: JSON.stringify({ user: select.value }),
       });
       await loadSession();
@@ -289,7 +289,7 @@
     if (!session || !session.user) {
       main.replaceChildren(
         el("h1", { text: screen.title }),
-        el("p", { role: "alert", text: "Not signed in. Run `frame dev` and open the bootstrap URL it prints." }),
+        el("p", { role: "alert", text: "Not signed in. Run `nari dev` and open the bootstrap URL it prints." }),
       );
       return;
     }
@@ -300,14 +300,14 @@
     const m = /^#bootstrap=([0-9a-f]{64})$/.exec(location.hash);
     if (m) {
       history.replaceState(null, "", location.pathname);
-      await fetch("/_frame/bootstrap", {
+      await fetch("/_nari/bootstrap", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: m[1] }),
       });
     }
-    config = await (await fetch("/assets/frame.json", { credentials: "same-origin" })).json();
+    config = await (await fetch("/assets/nari.json", { credentials: "same-origin" })).json();
     await loadSession();
     render();
   }

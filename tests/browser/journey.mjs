@@ -6,7 +6,7 @@ import { join } from "node:path";
 const [url, chromium] = process.argv.slice(2);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
-const profile = mkdtempSync(join(tmpdir(), "frame-journey-"));
+const profile = mkdtempSync(join(tmpdir(), "nari-journey-"));
 const flags = ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check", "--disable-gpu"];
 if (process.env.CI && process.platform === "linux") flags.push("--no-sandbox");
 const browser = spawn(chromium, [...flags, "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
@@ -131,10 +131,10 @@ try {
   check("task completes via keyboard", true);
 
   await evaluate(`(async () => {
-    const s = (await (await fetch('/_frame/session')).json()).data.user;
-    const list = (await (await fetch('/api/actions/list_tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Frame-CSRF': s.csrf }, body: '{}' })).json()).data.items;
+    const s = (await (await fetch('/_nari/session')).json()).data.user;
+    const list = (await (await fetch('/api/actions/list_tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Nari-CSRF': s.csrf }, body: '{}' })).json()).data.items;
     const t = list.find(i => i.title === 'double');
-    await fetch('/api/actions/complete_task', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Frame-CSRF': s.csrf, 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ id: t.id, revision: t.revision }) });
+    await fetch('/api/actions/complete_task', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Nari-CSRF': s.csrf, 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ id: t.id, revision: t.revision }) });
     return true;
   })()`);
   await focusByKeyboard("document.activeElement && document.activeElement.textContent === 'Mark complete' && document.activeElement.closest('li').textContent.includes('double')", "stale complete button");

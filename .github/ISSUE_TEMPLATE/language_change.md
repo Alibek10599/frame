@@ -10,7 +10,7 @@ What can't be expressed or enforced today?
 
 **Proposal**
 
-Show the `.frame` source you would like to write and what it should do.
+Show the `.nari` source you would like to write and what it should do.
 
 **Spec impact**
 

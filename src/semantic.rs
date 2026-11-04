@@ -17,7 +17,7 @@ const UNSUPPORTED_BLOCKS: &[&str] = &[
     "test",
     "secret",
 ];
-const RESERVED_ROUTES: &[&str] = &["/api", "/_frame", "/assets"];
+const RESERVED_ROUTES: &[&str] = &["/api", "/_nari", "/assets"];
 const RESERVED_DB_DIRS: &[&str] = &[
     "generated",
     "build",
@@ -160,7 +160,7 @@ impl<'a> Checker<'a> {
                         if top_level && UNSUPPORTED_BLOCKS.contains(&kind) {
                             self.err(
                                 "E_UNSUPPORTED_FEATURE",
-                                format!("'{kind}' declarations are not supported in Frame 0.1"),
+                                format!("'{kind}' declarations are not supported in Imanari 0.1"),
                                 b.kind.span,
                                 &s.id,
                             );
@@ -248,7 +248,7 @@ impl<'a> Checker<'a> {
         if unsupported.contains(&sym) {
             self.err(
                 "E_UNSUPPORTED_FEATURE",
-                format!("{key} = {sym} is not supported in Frame 0.1"),
+                format!("{key} = {sym} is not supported in Imanari 0.1"),
                 span,
                 &s.id,
             );
@@ -315,7 +315,7 @@ impl<'a> Checker<'a> {
             self.err(
                 "E_UNSUPPORTED_VERSION",
                 format!(
-                    "frame \"{}\" is not supported; this compiler implements \"{LANGUAGE_VERSION}\"",
+                    "imanari \"{}\" is not supported; this compiler implements \"{LANGUAGE_VERSION}\"",
                     doc.version
                 ),
                 doc.version_span,
@@ -425,7 +425,7 @@ impl<'a> Checker<'a> {
                     self.err(
                         "E_UNSUPPORTED_TARGET",
                         format!(
-                            "target '{t}' is not supported in Frame 0.1; only web is available"
+                            "target '{t}' is not supported in Imanari 0.1; only web is available"
                         ),
                         item.span,
                         &top.id,
@@ -505,7 +505,7 @@ impl<'a> Checker<'a> {
             "Float" | "Decimal" | "Date" | "DateTime" | "Json" | "Bytes" => {
                 self.err(
                     "E_UNSUPPORTED_FEATURE",
-                    format!("type {sym} is not supported in Frame 0.1 (Text, Bool, UUID, Int)"),
+                    format!("type {sym} is not supported in Imanari 0.1 (Text, Bool, UUID, Int)"),
                     span,
                     &s.id,
                 );
@@ -781,7 +781,7 @@ impl<'a> Checker<'a> {
                 } else {
                     self.err(
                         "E_UNSUPPORTED_FEATURE",
-                        "list actions cannot declare inputs in Frame 0.1 (no filters)",
+                        "list actions cannot declare inputs in Imanari 0.1 (no filters)",
                         ib.name.span,
                         &iid,
                     );
@@ -1067,7 +1067,7 @@ impl<'a> Checker<'a> {
             } else if !valid_chars {
                 Some("may only contain ASCII letters, digits, '/', '_', '.', '-'")
             } else if reserved {
-                Some("collides with a reserved runtime path (/api, /_frame, /assets)")
+                Some("collides with a reserved runtime path (/api, /_nari, /assets)")
             } else {
                 None
             };
@@ -1491,7 +1491,7 @@ impl<'a> Checker<'a> {
             } else {
                 self.err(
                     "E_VALUE",
-                    format!("bind '{v}' is not allowed; Frame 0.1 binds only to 127.0.0.1"),
+                    format!("bind '{v}' is not allowed; Imanari 0.1 binds only to 127.0.0.1"),
                     span,
                     &id,
                 );
@@ -1669,7 +1669,7 @@ impl<'a> Checker<'a> {
             ValueKind::Bool(true) => {
                 self.err(
                     "E_UNSUPPORTED_FEATURE",
-                    "automatic_release = true is not supported in Frame 0.1; repairs require explicit local apply",
+                    "automatic_release = true is not supported in Imanari 0.1; repairs require explicit local apply",
                     v.span,
                     &id,
                 );
@@ -1692,8 +1692,8 @@ impl<'a> Checker<'a> {
 }
 
 fn database_problem(v: &str) -> Option<&'static str> {
-    let Some(rest) = v.strip_prefix(".frame/") else {
-        return Some("must be a relative path under .frame/");
+    let Some(rest) = v.strip_prefix(".nari/") else {
+        return Some("must be a relative path under .nari/");
     };
     let parts: Vec<&str> = rest.split('/').collect();
     if rest.is_empty()
@@ -1710,7 +1710,7 @@ fn database_problem(v: &str) -> Option<&'static str> {
         return Some("may only contain ASCII letters, digits, '/', '_', '.', '-'");
     }
     if RESERVED_DB_DIRS.contains(&parts[0]) {
-        return Some("collides with a reserved .frame artifact path");
+        return Some("collides with a reserved .nari artifact path");
     }
     None
 }

@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
 use clap::{Parser, Subcommand};
-use frame::diag::{Diagnostic, Span};
-use frame::{Project, ir};
+use imanari::diag::{Diagnostic, Span};
+use imanari::{Project, ir};
 use serde_json::{Value as Json, json};
 use std::fs;
 use std::path::PathBuf;
@@ -10,15 +10,15 @@ use std::process::ExitCode;
 
 #[derive(Parser)]
 #[command(
-    name = "frame",
+    name = "nari",
     version,
-    about = "Frame language compiler and local runtime"
+    about = "Imanari language compiler and local runtime"
 )]
 struct Cli {
     #[arg(
         long,
         global = true,
-        help = "Project directory or .frame file (default: current directory)"
+        help = "Project directory or .nari file (default: current directory)"
     )]
     project: Option<PathBuf>,
     #[arg(long, global = true, help = "Machine-readable JSON output")]
@@ -106,7 +106,7 @@ impl Failure {
 
     fn diags(diagnostics: Vec<Diagnostic>) -> Self {
         Failure {
-            exit: frame::diag::exit_code(&diagnostics).max(1),
+            exit: imanari::diag::exit_code(&diagnostics).max(1),
             diagnostics,
         }
     }
@@ -130,12 +130,12 @@ fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().collect();
     match argv.get(1).map(String::as_str) {
         Some("__limit") => {
-            let Err(e) = frame::sandbox::limit_and_exec(&argv[2..]);
-            eprintln!("frame __limit: {e}");
+            let Err(e) = imanari::sandbox::limit_and_exec(&argv[2..]);
+            eprintln!("nari __limit: {e}");
             return ExitCode::from(3);
         }
         Some("__probe") => {
-            return if frame::sandbox::run_probe(&argv[2..]) {
+            return if imanari::sandbox::run_probe(&argv[2..]) {
                 ExitCode::SUCCESS
             } else {
                 ExitCode::FAILURE
@@ -177,7 +177,7 @@ fn project(path: Option<PathBuf>) -> Result<Project, Failure> {
 
 fn load(p: &Project) -> Result<(String, ir::Compiled, Vec<Diagnostic>), Failure> {
     let src = p.read().map_err(|e| Failure::new(3, "E_IO", e))?;
-    let (compiled, warnings) = frame::compile(&src, &p.file_name).map_err(Failure::diags)?;
+    let (compiled, warnings) = imanari::compile(&src, &p.file_name).map_err(Failure::diags)?;
     Ok((src, compiled, warnings))
 }
 
@@ -217,7 +217,7 @@ fn run(cli: Cli, json: bool) -> CmdResult {
         Command::Plan | Command::Release => Err(Failure::new(
             2,
             "E_UNSUPPORTED_FEATURE",
-            "production planning and release are not available in Frame 0.1 (local_dev identity only)",
+            "production planning and release are not available in Imanari 0.1 (local_dev identity only)",
         )),
     }
 }
@@ -247,16 +247,16 @@ fn init(dir: Option<PathBuf>, name: &str) -> CmdResult {
             format!("{} already exists; init never overwrites", root.display()),
         ));
     }
-    let template = include_str!("../examples/fieldwork/fieldwork.frame").replacen(
+    let template = include_str!("../examples/fieldwork/fieldwork.nari").replacen(
         "app fieldwork {",
         &format!("app {name} {{"),
         1,
     );
-    let file = format!("{name}.frame");
-    frame::compile(&template, &file).map_err(Failure::diags)?;
+    let file = format!("{name}.nari");
+    imanari::compile(&template, &file).map_err(Failure::diags)?;
     fs::create_dir_all(&root).map_err(|e| Failure::new(3, "E_IO", e.to_string()))?;
     fs::write(root.join(&file), template).map_err(|e| Failure::new(3, "E_IO", e.to_string()))?;
-    fs::write(root.join(".gitignore"), ".frame/\n")
+    fs::write(root.join(".gitignore"), ".nari/\n")
         .map_err(|e| Failure::new(3, "E_IO", e.to_string()))?;
     fs::create_dir_all(root.join("acceptance"))
         .map_err(|e| Failure::new(3, "E_IO", e.to_string()))?;
@@ -288,18 +288,18 @@ fn init(dir: Option<PathBuf>, name: &str) -> CmdResult {
 
 fn fmt(p: &Project, check: bool) -> CmdResult {
     let src = p.read().map_err(|e| Failure::new(3, "E_IO", e))?;
-    let formatted = frame::format_source(&src, &p.file_name).map_err(Failure::diags)?;
-    let reparsed = frame::syntax::parse(&formatted, &p.file_name).map_err(|d| {
+    let formatted = imanari::format_source(&src, &p.file_name).map_err(Failure::diags)?;
+    let reparsed = imanari::syntax::parse(&formatted, &p.file_name).map_err(|d| {
         Failure::new(
             3,
             "E_INTERNAL",
             format!("formatter produced unparsable output: {}", d.message),
         )
     })?;
-    let before = frame::compile(&src, &p.file_name)
+    let before = imanari::compile(&src, &p.file_name)
         .ok()
         .map(|(c, _)| c.semantic_sha256);
-    let after = frame::semantic::check(&reparsed, &formatted)
+    let after = imanari::semantic::check(&reparsed, &formatted)
         .ok()
         .map(|(c, _)| c.semantic_sha256);
     if before.is_some() && before != after {
@@ -315,7 +315,7 @@ fn fmt(p: &Project, check: bool) -> CmdResult {
             let mut f = Failure::new(
                 1,
                 "E_FORMAT",
-                format!("{} is not formatted; run `frame fmt`", p.file_name),
+                format!("{} is not formatted; run `nari fmt`", p.file_name),
             );
             f.diagnostics[0].file = p.file_name.clone();
             return Err(f);
@@ -340,16 +340,17 @@ fn fmt(p: &Project, check: bool) -> CmdResult {
 
 fn test(p: &Project) -> CmdResult {
     let (_, c, _) = load(p)?;
-    let tests = frame::testrun::load_protected(&p.dir).map_err(|e| Failure::new(1, "E_TEST", e))?;
-    let built = frame::pipeline::build(p, &c).map_err(build_failure)?;
+    let tests =
+        imanari::testrun::load_protected(&p.dir).map_err(|e| Failure::new(1, "E_TEST", e))?;
+    let built = imanari::pipeline::build(p, &c).map_err(build_failure)?;
     let run_dir = p
         .artifacts()
         .join("test")
-        .join(format!("run-{}", frame::random_hex(4)));
-    let run = frame::testrun::run_all(
+        .join(format!("run-{}", imanari::random_hex(4)));
+    let run = imanari::testrun::run_all(
         &c,
         &tests,
-        &frame::testrun::RunOptions {
+        &imanari::testrun::RunOptions {
             binary: &built.binary,
             cwd: &p.dir,
             run_dir: &run_dir,
@@ -361,7 +362,7 @@ fn test(p: &Project) -> CmdResult {
     let failed: Vec<_> = run.results.iter().filter(|r| !r.passed).collect();
     let incident_ids = if failed.iter().any(|r| r.kind == "protected") {
         runtime()?
-            .block_on(frame::repair::record_test_failures(
+            .block_on(imanari::repair::record_test_failures(
                 p,
                 &c,
                 &tests,
@@ -379,7 +380,7 @@ fn test(p: &Project) -> CmdResult {
         "protected_tests": tests.iter().map(|t| json!({ "file": t.file, "sha256": t.sha256 })).collect::<Vec<_>>(),
         "results": run.results,
     });
-    frame::artifacts::write_file(
+    imanari::artifacts::write_file(
         &p.artifacts().join("test"),
         "report.json",
         ir::canonical(&report) + "\n",
@@ -396,11 +397,11 @@ fn test(p: &Project) -> CmdResult {
     }
     for id in &incident_ids {
         human.push_str(&format!(
-            "incident {id} recorded; repair with: frame repair {id} --proposer fixture\n"
+            "incident {id} recorded; repair with: nari repair {id} --proposer fixture\n"
         ));
     }
     human.push_str(&format!(
-        "{} checks, {} failed (report: .frame/test/report.json)",
+        "{} checks, {} failed (report: .nari/test/report.json)",
         run.results.len(),
         failed.len()
     ));
@@ -420,9 +421,9 @@ fn test(p: &Project) -> CmdResult {
 
 fn context(p: &Project, id: &str, max_bytes: usize) -> CmdResult {
     let (src, c, _) = load(p)?;
-    let bundle = frame::context::extract(p, &c, &src, id, max_bytes)
+    let bundle = imanari::context::extract(p, &c, &src, id, max_bytes)
         .map_err(|e| Failure::new(1, "E_UNKNOWN_NODE", e))?;
-    let dir = frame::context::write(p, id, &bundle).map_err(|e| Failure::new(3, "E_IO", e))?;
+    let dir = imanari::context::write(p, id, &bundle).map_err(|e| Failure::new(3, "E_IO", e))?;
     if bundle.over_budget {
         let mut f = Failure::new(
             1,
@@ -452,8 +453,8 @@ fn diff(p: &Project, base: PathBuf) -> CmdResult {
     let (_, cur, _) = load(p)?;
     let base_project = Project::locate(Some(base)).map_err(|e| Failure::new(2, "E_PROJECT", e))?;
     let (_, base_c, _) = load(&base_project)?;
-    let d = frame::diff::diff(&base_c, &cur);
-    out(frame::diff::render(&d), d)
+    let d = imanari::diff::diff(&base_c, &cur);
+    out(imanari::diff::render(&d), d)
 }
 
 fn build_failure((exit, diagnostics): (u8, Vec<Diagnostic>)) -> Failure {
@@ -462,7 +463,7 @@ fn build_failure((exit, diagnostics): (u8, Vec<Diagnostic>)) -> Failure {
 
 fn build(p: &Project) -> CmdResult {
     let (_, c, warnings) = load(p)?;
-    let built = frame::pipeline::build(p, &c).map_err(build_failure)?;
+    let built = imanari::pipeline::build(p, &c).map_err(build_failure)?;
     out(
         format!(
             "{}built {} -> {}",
@@ -537,18 +538,18 @@ fn dev(p: &Project, acknowledge: bool, json_mode: bool) -> CmdResult {
     if !json_mode {
         eprint!("{}", render_warnings(&warnings));
     }
-    let built = frame::pipeline::build(p, &c).map_err(build_failure)?;
+    let built = imanari::pipeline::build(p, &c).map_err(build_failure)?;
     let rt = runtime()?;
     let emit = |event: &str, data: Json| emit_event(json_mode, event, &data);
-    let opts = frame::supervisor::DevOptions {
+    let opts = imanari::supervisor::DevOptions {
         binary: built.binary,
         acknowledge,
     };
-    match rt.block_on(frame::supervisor::run_dev(p, &c, &opts, &emit)) {
-        Ok(frame::supervisor::DevExit::Stopped) => {
+    match rt.block_on(imanari::supervisor::run_dev(p, &c, &opts, &emit)) {
+        Ok(imanari::supervisor::DevExit::Stopped) => {
             out("stopped", json!({ "ok": true, "state": "Stopped" }))
         }
-        Ok(frame::supervisor::DevExit::NeedsAttention(msg)) => {
+        Ok(imanari::supervisor::DevExit::NeedsAttention(msg)) => {
             Err(Failure::new(3, "STOPPED_NEEDS_ATTENTION", msg))
         }
         Err(e) => {
@@ -570,7 +571,7 @@ fn dev(p: &Project, acknowledge: bool, json_mode: bool) -> CmdResult {
 fn status(p: &Project) -> CmdResult {
     let c = load(p).ok().map(|(_, c, _)| c);
     let s = runtime()?
-        .block_on(frame::supervisor::status(p, c.as_ref()))
+        .block_on(imanari::supervisor::status(p, c.as_ref()))
         .map_err(|e| Failure::new(3, "E_CONTROL_DB", e))?;
     let mut human = format!(
         "backend: {} (restarts in last {}s: {}/{})",
@@ -596,7 +597,7 @@ fn status(p: &Project) -> CmdResult {
 fn incidents(p: &Project, id: Option<String>) -> CmdResult {
     let list = runtime()?
         .block_on(async {
-            let ctl = frame::supervisor::Control::open(p).await?;
+            let ctl = imanari::supervisor::Control::open(p).await?;
             ctl.incidents(id.as_deref(), 50).await
         })
         .map_err(|e| Failure::new(3, "E_CONTROL_DB", e))?;
@@ -636,10 +637,10 @@ fn incidents(p: &Project, id: Option<String>) -> CmdResult {
     )
 }
 
-fn repair_options(proposer: &str) -> Result<frame::repair::Options, Failure> {
-    Ok(frame::repair::Options {
-        frame_exe: std::env::current_exe().map_err(|e| Failure::new(3, "E_IO", e.to_string()))?,
-        proposer: frame::repair::Proposer::parse(proposer)
+fn repair_options(proposer: &str) -> Result<imanari::repair::Options, Failure> {
+    Ok(imanari::repair::Options {
+        nari_exe: std::env::current_exe().map_err(|e| Failure::new(3, "E_IO", e.to_string()))?,
+        proposer: imanari::repair::Proposer::parse(proposer)
             .map_err(|e| Failure::new(2, "E_USAGE", e))?,
     })
 }
@@ -661,7 +662,7 @@ fn split_error(e: String) -> Failure {
 fn repair(p: &Project, id: &str, proposer: &str) -> CmdResult {
     let (src, c, _) = load(p)?;
     let o = repair_options(proposer)?;
-    let r = frame::repair::run(p, &c, &src, id, &o).map_err(split_error)?;
+    let r = imanari::repair::run(p, &c, &src, id, &o).map_err(split_error)?;
     let mut human = format!(
         "repair {} for {}: {} ({})",
         r.report["repair_id"].as_str().unwrap_or_default(),
@@ -690,7 +691,7 @@ fn repair(p: &Project, id: &str, proposer: &str) -> CmdResult {
     }
     if r.state == "Validated" {
         human.push_str(&format!(
-            "\n  running source untouched; apply explicitly with: frame apply-repair {id} --candidate {}",
+            "\n  running source untouched; apply explicitly with: nari apply-repair {id} --candidate {}",
             r.report["proposal"]["candidate_hash"].as_str().unwrap_or_default()
         ));
     }
@@ -713,7 +714,7 @@ fn repair(p: &Project, id: &str, proposer: &str) -> CmdResult {
 fn apply_repair(p: &Project, id: &str, candidate: &str) -> CmdResult {
     let (src, c, _) = load(p)?;
     let o = repair_options("fixture")?;
-    let r = frame::repair::apply(p, &c, &src, id, candidate, &o).map_err(split_error)?;
+    let r = imanari::repair::apply(p, &c, &src, id, candidate, &o).map_err(split_error)?;
     if r.exit == 0 {
         out(
             format!(
@@ -740,11 +741,11 @@ fn apply_repair(p: &Project, id: &str, candidate: &str) -> CmdResult {
 
 fn bench(p: &Project, quick: bool) -> CmdResult {
     let (_, c, _) = load(p)?;
-    let opts = frame::bench::Options {
+    let opts = imanari::bench::Options {
         quick,
         out: p.artifacts().join("bench"),
     };
-    let r = frame::bench::run(p, &c, &opts).map_err(|e| Failure::new(3, "E_BENCH", e))?;
+    let r = imanari::bench::run(p, &c, &opts).map_err(|e| Failure::new(3, "E_BENCH", e))?;
     let mut human = format!("{}\n", r["machine"]["cpu"].as_str().unwrap_or_default());
     for b in r["budgets"].as_array().into_iter().flatten() {
         human.push_str(&format!(
@@ -754,6 +755,6 @@ fn bench(p: &Project, quick: bool) -> CmdResult {
             b["measured"]
         ));
     }
-    human.push_str("report: .frame/bench/report.json");
+    human.push_str("report: .nari/bench/report.json");
     out(human, r)
 }

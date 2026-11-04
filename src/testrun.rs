@@ -310,7 +310,7 @@ pub fn contract_checks(c: &Compiled, port: u16, a: &Session, b: &Session) -> Vec
             format!("status {}", status(&r)),
         );
         let forged = Session {
-            cookie: "frame_session=00".into(),
+            cookie: "nari_session=00".into(),
             ..a.clone()
         };
         let r = call(port, Some(&forged), n, &input, Some(&key()));
@@ -321,11 +321,11 @@ pub fn contract_checks(c: &Compiled, port: u16, a: &Session, b: &Session) -> Vec
             format!("status {}", status(&r)),
         );
         let mut extra = input.clone();
-        extra["__frame_unknown"] = json!(1);
+        extra["__nari_unknown"] = json!(1);
         let r = call(port, Some(a), n, &extra, Some(&key()));
         let field_ok = r
             .as_ref()
-            .is_ok_and(|r| r.json()["error"]["field"] == "__frame_unknown");
+            .is_ok_and(|r| r.json()["error"]["field"] == "__nari_unknown");
         k.check(
             format!("{n}: unknown input field is rejected"),
             id,
@@ -342,7 +342,7 @@ pub fn contract_checks(c: &Compiled, port: u16, a: &Session, b: &Session) -> Vec
                 ("Content-Type", "application/json"),
                 ("Origin", o),
                 ("Cookie", &a.cookie),
-                ("X-Frame-CSRF", &a.csrf),
+                ("X-Nari-CSRF", &a.csrf),
                 ("Idempotency-Key", &key()),
             ],
             body.as_bytes(),

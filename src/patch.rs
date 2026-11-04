@@ -2,7 +2,7 @@ use crate::ir::{self, Compiled};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
 
-pub const SCHEMA: &str = "frame-patch/0.1";
+pub const SCHEMA: &str = "nari-patch/0.1";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Edit {
@@ -71,10 +71,10 @@ pub fn classify_path(file: &str, project_file: &str) -> Result<(), Rejected> {
     {
         return forbidden("dependency and toolchain files are protected");
     }
-    if normalized.starts_with(".frame/") {
+    if normalized.starts_with(".nari/") {
         return forbidden("generated artifacts are not canonical source");
     }
-    forbidden("only the project's .frame source may be edited")
+    forbidden("only the project's .nari source may be edited")
 }
 
 pub fn apply_text(p: &Patch, project_file: &str, src: &str) -> Result<String, Rejected> {

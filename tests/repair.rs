@@ -1,7 +1,7 @@
 mod common;
 
 use common::*;
-use frame::patch::{self, Edit, Patch};
+use imanari::patch::{self, Edit, Patch};
 use serde_json::{Value, json};
 use std::path::Path;
 use std::process::Command;
@@ -9,12 +9,12 @@ use std::process::Command;
 const BUGGY_FROM: &str = "set = { completed: true };";
 const BUGGY_TO: &str = "set = { completed: false };";
 
-fn frame(dir: &Path, env: &[(&str, &str)], args: &[&str]) -> (i32, Value, String) {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_frame"));
+fn nari(dir: &Path, env: &[(&str, &str)], args: &[&str]) -> (i32, Value, String) {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_nari"));
     cmd.args(["--json", "--project", dir.to_str().unwrap()])
         .args(args)
-        .env("FRAME_TARGET_DIR", SHARED_TARGET)
-        .env_remove("FRAME_SANDBOX");
+        .env("NARI_TARGET_DIR", SHARED_TARGET)
+        .env_remove("NARI_SANDBOX");
     for (k, v) in env {
         cmd.env(k, v);
     }
@@ -31,12 +31,12 @@ fn seeded(name: &str) -> (std::path::PathBuf, String) {
     fieldwork();
     let src = FIXTURE.replace(BUGGY_FROM, BUGGY_TO);
     let p = write_project(name, &src);
-    let (code, report, _) = frame(&p.dir, &[], &["test"]);
+    let (code, report, _) = nari(&p.dir, &[], &["test"]);
     assert_eq!(
         code, 1,
         "seeded bug is caught by the unchanged protected test: {report}"
     );
-    let (_, list, _) = frame(&p.dir, &[], &["incidents"]);
+    let (_, list, _) = nari(&p.dir, &[], &["incidents"]);
     let inc = list["incidents"]
         .as_array()
         .unwrap()
@@ -53,7 +53,7 @@ fn seeded(name: &str) -> (std::path::PathBuf, String) {
 }
 
 fn sha(path: &Path) -> String {
-    frame::ir::sha256_hex(&std::fs::read(path).unwrap())
+    imanari::ir::sha256_hex(&std::fs::read(path).unwrap())
 }
 
 fn details(v: &Value) -> Value {
@@ -68,9 +68,9 @@ fn details(v: &Value) -> Value {
 )]
 fn seeded_bug_is_repaired_in_isolation_and_applied_only_explicitly() {
     let (dir, inc) = seeded("repair-success");
-    let src_file = dir.join("fieldwork.frame");
+    let src_file = dir.join("fieldwork.nari");
     let before = sha(&src_file);
-    let (code, report, err) = frame(&dir, &[], &["repair", &inc, "--proposer", "fixture"]);
+    let (code, report, err) = nari(&dir, &[], &["repair", &inc, "--proposer", "fixture"]);
     assert_eq!(code, 0, "{err}\n{report}");
     assert_eq!(report["state"], "Validated");
     assert_eq!(report["reproduction"]["result"], "reproduced");
@@ -93,17 +93,17 @@ fn seeded_bug_is_repaired_in_isolation_and_applied_only_explicitly() {
         .unwrap()
         .to_string();
     assert!(
-        dir.join(format!(".frame/repair/{inc}/candidates/{candidate}.json"))
+        dir.join(format!(".nari/repair/{inc}/candidates/{candidate}.json"))
             .exists()
     );
-    let task = frame::progress::TaskRecord::load(
-        &dir.join(format!(".frame/repair/{inc}/attempt-1/task.json")),
+    let task = imanari::progress::TaskRecord::load(
+        &dir.join(format!(".nari/repair/{inc}/attempt-1/task.json")),
     )
     .unwrap();
     assert_eq!(task.state, "validated");
-    let c = frame::compile(
+    let c = imanari::compile(
         &std::fs::read_to_string(&src_file).unwrap(),
-        "fieldwork.frame",
+        "fieldwork.nari",
     )
     .unwrap()
     .0;
@@ -115,7 +115,7 @@ fn seeded_bug_is_repaired_in_isolation_and_applied_only_explicitly() {
 
     let original = std::fs::read_to_string(&src_file).unwrap();
     std::fs::write(&src_file, format!("// unrelated edit\n{original}")).unwrap();
-    let (code, stale, _) = frame(
+    let (code, stale, _) = nari(
         &dir,
         &[],
         &["apply-repair", &inc, "--candidate", &candidate],
@@ -124,7 +124,7 @@ fn seeded_bug_is_repaired_in_isolation_and_applied_only_explicitly() {
     assert_eq!(stale["diagnostics"][0]["code"], "PATCH_STALE");
     std::fs::write(&src_file, &original).unwrap();
 
-    let (code, applied, err) = frame(
+    let (code, applied, err) = nari(
         &dir,
         &[],
         &["apply-repair", &inc, "--candidate", &candidate],
@@ -137,11 +137,11 @@ fn seeded_bug_is_repaired_in_isolation_and_applied_only_explicitly() {
         original,
         "only the binding changed"
     );
-    let (code, _, _) = frame(&dir, &[], &["test"]);
+    let (code, _, _) = nari(&dir, &[], &["test"]);
     assert_eq!(code, 0, "repaired app passes the full suite");
-    let (_, i, _) = frame(&dir, &[], &["incidents", "--id", &inc]);
+    let (_, i, _) = nari(&dir, &[], &["incidents", "--id", &inc]);
     assert_eq!(i["incidents"][0]["outcome"], "repaired_by_local_apply");
-    let (code, again, _) = frame(
+    let (code, again, _) = nari(
         &dir,
         &[],
         &["apply-repair", &inc, "--candidate", &candidate],
@@ -156,7 +156,7 @@ fn seeded_bug_is_repaired_in_isolation_and_applied_only_explicitly() {
 )]
 fn malicious_out_of_scope_and_stale_proposals_are_rejected() {
     let src = FIXTURE.replace(BUGGY_FROM, BUGGY_TO);
-    let c = frame::compile(&src, "fieldwork.frame").unwrap().0;
+    let c = imanari::compile(&src, "fieldwork.nari").unwrap().0;
     let mk = |file: &str, from: &str, to: &str| {
         let start = src.find(from).unwrap();
         Patch {
@@ -175,11 +175,11 @@ fn malicious_out_of_scope_and_stale_proposals_are_rejected() {
         }
     };
     let code = |p: &Patch| {
-        frame::repair::validate_static(&c, &src, "fieldwork.frame", p)
+        imanari::repair::validate_static(&c, &src, "fieldwork.nari", p)
             .err()
             .map(|r| r.code)
     };
-    let f = "fieldwork.frame";
+    let f = "fieldwork.nari";
     assert_eq!(
         code(&mk(f, BUGGY_TO, "set = { completed: true };")),
         None,
@@ -246,7 +246,7 @@ fn malicious_out_of_scope_and_stale_proposals_are_rejected() {
         "protected tests"
     );
     assert_eq!(
-        code(&mk("../outside.frame", BUGGY_TO, "x")),
+        code(&mk("../outside.nari", BUGGY_TO, "x")),
         Some("PATCH_PATH_FORBIDDEN"),
         "path outside project"
     );
@@ -272,8 +272,8 @@ fn malicious_out_of_scope_and_stale_proposals_are_rejected() {
     );
     let evil_path = dir.join("evil.json");
     std::fs::write(&evil_path, serde_json::to_vec(&evil).unwrap()).unwrap();
-    let before = sha(&dir.join("fieldwork.frame"));
-    let (code, out, _) = frame(
+    let before = sha(&dir.join("fieldwork.nari"));
+    let (code, out, _) = nari(
         &dir,
         &[],
         &[
@@ -287,9 +287,9 @@ fn malicious_out_of_scope_and_stale_proposals_are_rejected() {
     let report = details(&out);
     assert_eq!(report["state"], "Rejected");
     assert_eq!(report["static_validation"]["code"], "PATCH_SCOPE_VIOLATION");
-    assert_eq!(sha(&dir.join("fieldwork.frame")), before);
+    assert_eq!(sha(&dir.join("fieldwork.nari")), before);
 
-    let (code, out, _) = frame(&dir, &[], &["repair", &inc, "--proposer", "fixture"]);
+    let (code, out, _) = nari(&dir, &[], &["repair", &inc, "--proposer", "fixture"]);
     assert_eq!(code, 0, "second attempt within max_attempts = 2: {out}");
     assert_eq!(out["attempt"], 2);
     let ranked = out["precedents"].as_array().unwrap();
@@ -299,10 +299,10 @@ fn malicious_out_of_scope_and_stale_proposals_are_rejected() {
         ranked[0]["reusable"], false,
         "failed attempts stay visible but are not reused"
     );
-    let (code, out, _) = frame(&dir, &[], &["repair", &inc, "--proposer", "fixture"]);
+    let (code, out, _) = nari(&dir, &[], &["repair", &inc, "--proposer", "fixture"]);
     assert_eq!(code, 4);
     assert_eq!(details(&out)["state"], "Exhausted");
-    let (_, list, _) = frame(&dir, &[], &["incidents"]);
+    let (_, list, _) = nari(&dir, &[], &["incidents"]);
     let inc2 = list["incidents"]
         .as_array()
         .unwrap()
@@ -318,9 +318,9 @@ fn malicious_out_of_scope_and_stale_proposals_are_rejected() {
 #[test]
 fn missing_sandbox_reports_unavailable_instead_of_validating() {
     let (dir, inc) = seeded("repair-nosandbox");
-    let (code, out, _) = frame(
+    let (code, out, _) = nari(
         &dir,
-        &[("FRAME_SANDBOX", "none")],
+        &[("NARI_SANDBOX", "none")],
         &["repair", &inc, "--proposer", "fixture"],
     );
     assert_eq!(code, 3);
@@ -333,7 +333,7 @@ fn missing_sandbox_reports_unavailable_instead_of_validating() {
     );
     assert_eq!(report["reproduction"]["result"], "SANDBOX_UNAVAILABLE");
     assert!(
-        !dir.join(format!(".frame/repair/{inc}/candidates")).exists(),
+        !dir.join(format!(".nari/repair/{inc}/candidates")).exists(),
         "no candidate is stored as validated"
     );
 }
@@ -345,23 +345,20 @@ fn missing_sandbox_reports_unavailable_instead_of_validating() {
 )]
 fn precedents_require_compatible_versions() {
     let (dir, inc) = seeded("repair-precedent");
-    let (code, out, _) = frame(&dir, &[], &["repair", &inc, "--proposer", "fixture"]);
+    let (code, out, _) = nari(&dir, &[], &["repair", &inc, "--proposer", "fixture"]);
     assert_eq!(code, 0, "{out}");
-    let p = frame::Project::locate(Some(dir.clone())).unwrap();
-    let c = frame::compile(
-        &std::fs::read_to_string(&p.file).unwrap(),
-        "fieldwork.frame",
-    )
-    .unwrap()
-    .0;
+    let p = imanari::Project::locate(Some(dir.clone())).unwrap();
+    let c = imanari::compile(&std::fs::read_to_string(&p.file).unwrap(), "fieldwork.nari")
+        .unwrap()
+        .0;
     let sig = "test:acceptance/complete_task.json:step1:data.completed";
     let rt = tokio::runtime::Runtime::new().unwrap();
     let (compatible, incompatible) = rt.block_on(async {
-        let ctl = frame::supervisor::Control::open(&p).await.unwrap();
-        let a = frame::repair::precedents(&ctl, sig, &frame::repair::compat_key(&c), "none")
+        let ctl = imanari::supervisor::Control::open(&p).await.unwrap();
+        let a = imanari::repair::precedents(&ctl, sig, &imanari::repair::compat_key(&c), "none")
             .await
             .unwrap();
-        let b = frame::repair::precedents(&ctl, sig, "different-compiler-or-schema", "none")
+        let b = imanari::repair::precedents(&ctl, sig, "different-compiler-or-schema", "none")
             .await
             .unwrap();
         (a, b)
@@ -377,13 +374,13 @@ fn precedents_require_compatible_versions() {
 
     let candidate = out["proposal"]["candidate_hash"].as_str().unwrap();
     assert_eq!(
-        frame(&dir, &[], &["apply-repair", &inc, "--candidate", candidate]).0,
+        nari(&dir, &[], &["apply-repair", &inc, "--candidate", candidate]).0,
         0
     );
     let fixed = std::fs::read_to_string(&p.file).unwrap();
     std::fs::write(&p.file, fixed.replace(BUGGY_FROM, BUGGY_TO)).unwrap();
-    assert_eq!(frame(&dir, &[], &["test"]).0, 1);
-    let (_, list, _) = frame(&dir, &[], &["incidents"]);
+    assert_eq!(nari(&dir, &[], &["test"]).0, 1);
+    let (_, list, _) = nari(&dir, &[], &["incidents"]);
     let open = list["incidents"]
         .as_array()
         .unwrap()
@@ -392,7 +389,7 @@ fn precedents_require_compatible_versions() {
         .unwrap();
     let new_inc = open["incident_id"].as_str().unwrap();
     assert_ne!(new_inc, inc);
-    let (code, again, _) = frame(&dir, &[], &["repair", new_inc, "--proposer", "fixture"]);
+    let (code, again, _) = nari(&dir, &[], &["repair", new_inc, "--proposer", "fixture"]);
     assert_eq!(
         code, 0,
         "regression after a resolved repair starts a new budget: {again}"
@@ -413,12 +410,12 @@ fn precedents_require_compatible_versions() {
 )]
 fn exported_evidence_contains_no_secret_canaries() {
     let (dir, inc) = seeded("repair-canary");
-    let p = frame::Project::locate(Some(dir.clone())).unwrap();
+    let p = imanari::Project::locate(Some(dir.clone())).unwrap();
     let b = fieldwork();
-    let app = start(b, &dir.join(".frame/canary.db"), &[]).unwrap();
-    let (a, other) = frame::launch::dev_sessions(app.port, &app.bootstrap).unwrap();
-    let payload = format!("CANARY-USER-PAYLOAD-{}", frame::random_hex(6));
-    frame::launch::call(
+    let app = start(b, &dir.join(".nari/canary.db"), &[]).unwrap();
+    let (a, other) = imanari::launch::dev_sessions(app.port, &app.bootstrap).unwrap();
+    let payload = format!("CANARY-USER-PAYLOAD-{}", imanari::random_hex(6));
+    imanari::launch::call(
         app.port,
         Some(&a),
         "create_task",
@@ -433,18 +430,18 @@ fn exported_evidence_contains_no_secret_canaries() {
         payload.clone(),
     ];
     for s in [&a, &other] {
-        canaries.push(s.cookie.trim_start_matches("frame_session=").to_string());
+        canaries.push(s.cookie.trim_start_matches("nari_session=").to_string());
     }
     drop(app);
-    let (code, _, _) = frame(
+    let (code, _, _) = nari(
         &dir,
-        &[("FRAME_PORT", "0"), ("FRAME_FAULT", "crash_on_start")],
+        &[("NARI_PORT", "0"), ("NARI_FAULT", "crash_on_start")],
         &["dev"],
     );
     assert_eq!(code, 3);
     let rt = tokio::runtime::Runtime::new().unwrap();
     let owner = rt.block_on(async {
-        let ctl = frame::supervisor::Control::open(&p).await.unwrap();
+        let ctl = imanari::supervisor::Control::open(&p).await.unwrap();
         ctl.state().await.unwrap().unwrap().1["owner_token"]
             .as_str()
             .unwrap()
@@ -452,22 +449,22 @@ fn exported_evidence_contains_no_secret_canaries() {
     });
     canaries.push(owner);
     assert_eq!(
-        frame(&dir, &[], &["repair", &inc, "--proposer", "fixture"]).0,
+        nari(&dir, &[], &["repair", &inc, "--proposer", "fixture"]).0,
         0
     );
     assert_eq!(
-        frame(&dir, &[], &["context", "fieldwork/action/complete_task"]).0,
+        nari(&dir, &[], &["context", "fieldwork/action/complete_task"]).0,
         0
     );
     let mut outputs = vec![
-        frame(&dir, &[], &["status"]).1.to_string(),
-        frame(&dir, &[], &["incidents"]).1.to_string(),
+        nari(&dir, &[], &["status"]).1.to_string(),
+        nari(&dir, &[], &["incidents"]).1.to_string(),
     ];
     let mut stack = vec![
-        dir.join(".frame/context"),
-        dir.join(".frame/incidents"),
-        dir.join(".frame/test/report.json"),
-        dir.join(".frame/repair"),
+        dir.join(".nari/context"),
+        dir.join(".nari/incidents"),
+        dir.join(".nari/test/report.json"),
+        dir.join(".nari/repair"),
     ];
     let mut scanned = 0;
     while let Some(path) = stack.pop() {

@@ -10,7 +10,7 @@ Acceptance impact: none. Item 4's input-limit check asserts 413, and the rate li
 
 ## D2 Protected tests are JSON scenarios in `acceptance/`
 
-The grammar has no test syntax, and unknown blocks are errors (§5.1). Protected tests are therefore data files outside the `.frame` source: declarative HTTP steps with subset expectations. They are hashed into context, repair snapshots, and candidates, and the repair path policy forbids edits to `acceptance/`.
+The grammar has no test syntax, and unknown blocks are errors (§5.1). Protected tests are therefore data files outside the `.nari` source: declarative HTTP steps with subset expectations. They are hashed into context, repair snapshots, and candidates, and the repair path policy forbids edits to `acceptance/`.
 
 Acceptance impact: items 8 and 9 use them as the unchanged protected suite.
 
@@ -22,7 +22,7 @@ Acceptance impact: none.
 
 ## D4 Generated apps build against a bundled copy of the runtime
 
-The CLI embeds the `frame-runtime` manifest and source and writes them to `.frame/generated/runtime/`, next to the generated app, which depends on it as `path = "../runtime"`. The generated tree is position-independent, a released `frame` binary needs no source checkout, and the dependency lock embedded from this workspace still pins every crate. The runtime manifest is standalone (no workspace inheritance), so it can be copied verbatim. Benchmarks build the baseline and the kernel the same way, under `.frame/bench/crates/`. Unchanged files are not rewritten, so Cargo does not rebuild them.
+The CLI embeds the `imanari-runtime` manifest and source and writes them to `.nari/generated/runtime/`, next to the generated app, which depends on it as `path = "../runtime"`. The generated tree is position-independent, a released `nari` binary needs no source checkout, and the dependency lock embedded from this workspace still pins every crate. The runtime manifest is standalone (no workspace inheritance), so it can be copied verbatim. Benchmarks build the baseline and the kernel the same way, under `.nari/bench/crates/`. Unchanged files are not rewritten, so Cargo does not rebuild them.
 
 Acceptance impact: none. Earlier builds referenced the checkout's `runtime/` by absolute path.
 
@@ -36,7 +36,7 @@ Acceptance impact: none. Earlier builds referenced the checkout's `runtime/` by 
 
 ## D7 Restart budget across supervisor restarts
 
-Restart attempts are rows in the control DB, counted in a sliding window that a new supervisor never resets. A supervisor's first launch is not a restart, but a crash after it is charged against the persisted window. `StoppedNeedsAttention` blocks `frame dev` until the operator passes `--acknowledge`, which records a transition and keeps the history. Deterministic startup refusals (`MIGRATION_REQUIRED`, configuration errors) stop immediately instead of looping.
+Restart attempts are rows in the control DB, counted in a sliding window that a new supervisor never resets. A supervisor's first launch is not a restart, but a crash after it is charged against the persisted window. `StoppedNeedsAttention` blocks `nari dev` until the operator passes `--acknowledge`, which records a transition and keeps the history. Deterministic startup refusals (`MIGRATION_REQUIRED`, configuration errors) stop immediately instead of looping.
 
 Acceptance impact: item 6 verifies exhaustion, refusal, acknowledgement, and an unchanged budget.
 
@@ -48,13 +48,13 @@ When an unverified process answers on the recorded port, the supervisor records 
 
 `max_attempts` counts attempts for a failure signature since the last applied repair of that signature. A new incident for an unresolved signature does not reset the budget, while a regression after an applied fix starts a new one. Rejected and inconclusive attempts count, stay visible as precedents, and are never reused.
 
-## D10 Dev and test fault injection through `FRAME_FAULT`
+## D10 Dev and test fault injection through `NARI_FAULT`
 
 Crash points before commit, after commit, on request, and on start are compiled into the runtime and enabled only by an environment variable that the trusted operator or test harness sets. They make the crash and lost-response acceptance checks deterministic.
 
 ## D11 Benchmark rate-limit override
 
-`FRAME_MUTATIONS_PER_MINUTE` lets the trusted operator raise the per-actor limit (1..1,000,000). The check still runs per request, identically in the generated app and the baseline. It is not a benchmark-only bypass.
+`NARI_MUTATIONS_PER_MINUTE` lets the trusted operator raise the per-actor limit (1..1,000,000). The check still runs per request, identically in the generated app and the baseline. It is not a benchmark-only bypass.
 
 ## D12 Sandbox resource limits on macOS
 
@@ -71,3 +71,9 @@ Acceptance impact: item 5's concurrency tests still pass, and item 12's runtime 
 ## D13 Semantic and source hashes
 
 The semantic hash covers the typed IR without spans, so comments, formatting and declaration reordering do not change it. The source hash covers the exact bytes, so any edit makes a captured patch stale (§8).
+
+## D15 The project is named Imanari and the command is `nari`
+
+"Frame" was already taken by a state-machine language with a Rust compiler on crates.io (frame-lang/framec), by Polkadot's FRAME runtime framework, and by the `frame` crate. The language is now Imanari, after the BJJ roll into a leg entanglement. Day-to-day names use the short form `nari`: the CLI, the `.nari` source extension, the `.nari/` artifact directory, `NARI_*` environment variables, and the `nari-*/0.1` artifact schemas. Crates keep the full name (`imanari`, `imanari-runtime`), and source files open with `imanari "0.1";`. The language version stays 0.1, and the tool moves to 0.2.0 because the command, extension and header changed.
+
+Acceptance impact: none. Behavior is unchanged; only names moved.

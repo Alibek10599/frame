@@ -124,7 +124,7 @@ pub fn parse(src: &str, file: &str) -> PResult<Document> {
     };
     p.skip_trivia()?;
     let start = p.pos;
-    p.keyword("frame")?;
+    p.keyword("imanari")?;
     p.skip_trivia()?;
     let version_start = p.pos;
     let version = p.string()?;

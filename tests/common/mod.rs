@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
-use frame::Project;
-use frame::ir::Compiled;
-use frame::launch::{AppProcess, LaunchOptions, Session};
+use imanari::Project;
+use imanari::ir::Compiled;
+use imanari::launch::{AppProcess, LaunchOptions, Session};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-pub const FIXTURE: &str = include_str!("../../examples/fieldwork/fieldwork.frame");
-pub const SHARED_TARGET: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/target/frame-apps");
+pub const FIXTURE: &str = include_str!("../../examples/fieldwork/fieldwork.nari");
+pub const SHARED_TARGET: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/target/nari-apps");
 
 pub struct Built {
     pub project: Project,
@@ -17,15 +17,15 @@ pub struct Built {
 
 pub fn scratch(name: &str) -> PathBuf {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
-        .join("frame-tests")
-        .join(format!("{name}-{}", frame::random_hex(4)));
+        .join("nari-tests")
+        .join(format!("{name}-{}", imanari::random_hex(4)));
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
 
 pub fn write_project(name: &str, src: &str) -> Project {
     let dir = scratch(name);
-    std::fs::write(dir.join("fieldwork.frame"), src).unwrap();
+    std::fs::write(dir.join("fieldwork.nari"), src).unwrap();
     let acceptance = dir.join("acceptance");
     std::fs::create_dir_all(&acceptance).unwrap();
     for entry in std::fs::read_dir(concat!(
@@ -42,8 +42,8 @@ pub fn write_project(name: &str, src: &str) -> Project {
 
 pub fn build(name: &str, src: &str) -> Built {
     let project = write_project(name, src);
-    let (compiled, _) = frame::compile(src, &project.file_name).expect("source compiles");
-    let built = frame::pipeline::build_in(&project, &compiled, Path::new(SHARED_TARGET))
+    let (compiled, _) = imanari::compile(src, &project.file_name).expect("source compiles");
+    let built = imanari::pipeline::build_in(&project, &compiled, Path::new(SHARED_TARGET))
         .unwrap_or_else(|(_, d)| panic!("build failed: {d:#?}"));
     Built {
         project,
@@ -78,6 +78,6 @@ pub fn app_with_sessions(
     env: &[(&str, &str)],
 ) -> (AppProcess, Session, Session) {
     let app = start(b, db, env).expect("app starts");
-    let (a, s) = frame::launch::dev_sessions(app.port, &app.bootstrap).expect("dev sessions");
+    let (a, s) = imanari::launch::dev_sessions(app.port, &app.bootstrap).expect("dev sessions");
     (app, a, s)
 }

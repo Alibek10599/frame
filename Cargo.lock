@@ -331,7 +331,7 @@ dependencies = [
 name = "fieldwork-baseline"
 version = "0.1.0"
 dependencies = [
- "frame-runtime",
+ "imanari-runtime",
  "serde",
 ]
 
@@ -365,33 +365,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
-]
-
-[[package]]
-name = "frame"
-version = "0.1.0"
-dependencies = [
- "clap",
- "getrandom",
- "rlimit",
- "serde",
- "serde_json",
- "sha2",
- "sqlx",
- "tokio",
-]
-
-[[package]]
-name = "frame-runtime"
-version = "0.1.0"
-dependencies = [
- "axum",
- "getrandom",
- "serde",
- "serde_json",
- "sha2",
- "sqlx",
- "tokio",
 ]
 
 [[package]]
@@ -706,6 +679,33 @@ checksum = "cb68373c0d6620ef8105e855e7745e18b0d00d3bdb07fb532e434244cdb9a714"
 dependencies = [
  "icu_normalizer",
  "icu_properties",
+]
+
+[[package]]
+name = "imanari"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "getrandom",
+ "rlimit",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
+name = "imanari-runtime"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "getrandom",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "tokio",
 ]
 
 [[package]]

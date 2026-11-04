@@ -4,7 +4,7 @@ use serde_json::Value as Json;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const IR_SCHEMA: &str = "frame-ir/0.1";
+pub const IR_SCHEMA: &str = "nari-ir/0.1";
 pub const LANGUAGE_VERSION: &str = "0.1";
 pub const COMPILER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -430,7 +430,7 @@ impl Compiled {
         serde_json::json!({
             "schema": IR_SCHEMA,
             "language": LANGUAGE_VERSION,
-            "compiler": format!("frame {COMPILER_VERSION}"),
+            "compiler": format!("nari {COMPILER_VERSION}"),
             "app": to_json(&self.app),
             "graph": to_json(&self.graph),
             "dependencies": { "forward": forward, "reverse": reverse },

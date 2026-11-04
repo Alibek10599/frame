@@ -73,7 +73,7 @@ fn machine() -> Json {
         "os": format!("{} {}", sh("sw_vers", &["-productName"]), sh("sw_vers", &["-productVersion"])),
         "rustc": sh("rustc", &["-V"]),
         "cxx": sh("c++", &["--version"]),
-        "frame_cli_profile": if cfg!(debug_assertions) { "debug (compiler/context timings are not representative; use cargo build --release)" } else { "release" },
+        "nari_cli_profile": if cfg!(debug_assertions) { "debug (compiler/context timings are not representative; use cargo build --release)" } else { "release" },
         "generated_app_profile": "release, opt-level 3, codegen-units 16",
         "dependencies": { "axum": version("axum"), "tokio": version("tokio"), "sqlx": version("sqlx"), "hyper": version("hyper"), "serde_json": version("serde_json"), "libsqlite3-sys": version("libsqlite3-sys") },
     })
@@ -81,7 +81,7 @@ fn machine() -> Json {
 
 pub fn big_source(n: usize) -> String {
     let mut s = String::from(
-        "frame \"0.1\";\n\napp bench {\n  targets = [web];\n\n  identity development {\n    mode = local_dev;\n  }\n\n  entity Task {\n    owner_field = owner;\n\n    field title {\n      type = Text;\n      min_length = 1;\n      max_length = 200;\n    }\n\n    field owner {\n      type = UUID;\n    }\n\n    field completed {\n      type = Bool;\n      default = false;\n    }\n  }\n",
+        "imanari \"0.1\";\n\napp bench {\n  targets = [web];\n\n  identity development {\n    mode = local_dev;\n  }\n\n  entity Task {\n    owner_field = owner;\n\n    field title {\n      type = Text;\n      min_length = 1;\n      max_length = 200;\n    }\n\n    field owner {\n      type = UUID;\n    }\n\n    field completed {\n      type = Bool;\n      default = false;\n    }\n  }\n",
     );
     for i in 0..n {
         s.push_str(&match i % 3 {
@@ -90,7 +90,7 @@ pub fn big_source(n: usize) -> String {
             _ => format!("\n  action a{i} {{\n    kind = update;\n    entity = Task;\n    access = signed_in;\n\n    input id {{\n      type = UUID;\n    }}\n\n    input revision {{\n      type = Int;\n    }}\n\n    id = @input.id;\n    expected_revision = @input.revision;\n    set = {{ completed: true }};\n  }}\n"),
         });
     }
-    s.push_str("\n  screen tasks {\n    route = \"/\";\n    title = \"Tasks\";\n    query = a1;\n\n    form add {\n      submit = a0;\n\n      input title {\n        label = \"Title\";\n      }\n    }\n\n    list items {\n      source = @query.items;\n      fields = [title, completed];\n\n      button done {\n        label = \"Done\";\n        action = a2;\n        arguments = {\n          id: @item.id,\n          revision: @item.revision,\n        };\n      }\n    }\n  }\n\n  runtime local {\n    bind = \"127.0.0.1\";\n    port = 7331;\n    database = \".frame/app.db\";\n    request_limit_bytes = 65536;\n    request_timeout_ms = 5000;\n  }\n\n  recovery backend_process {\n    target = backend;\n    max_restarts = 3;\n    window_seconds = 60;\n    backoff_ms = [100, 500, 2000];\n    after_exhaustion = stop;\n  }\n\n  repair local_candidate {\n    mode = isolated;\n    max_attempts = 2;\n    editable_actions = [a2];\n    automatic_release = false;\n  }\n}\n");
+    s.push_str("\n  screen tasks {\n    route = \"/\";\n    title = \"Tasks\";\n    query = a1;\n\n    form add {\n      submit = a0;\n\n      input title {\n        label = \"Title\";\n      }\n    }\n\n    list items {\n      source = @query.items;\n      fields = [title, completed];\n\n      button done {\n        label = \"Done\";\n        action = a2;\n        arguments = {\n          id: @item.id,\n          revision: @item.revision,\n        };\n      }\n    }\n  }\n\n  runtime local {\n    bind = \"127.0.0.1\";\n    port = 7331;\n    database = \".nari/app.db\";\n    request_limit_bytes = 65536;\n    request_timeout_ms = 5000;\n  }\n\n  recovery backend_process {\n    target = backend;\n    max_restarts = 3;\n    window_seconds = 60;\n    backoff_ms = [100, 500, 2000];\n    after_exhaustion = stop;\n  }\n\n  repair local_candidate {\n    mode = isolated;\n    max_attempts = 2;\n    editable_actions = [a2];\n    automatic_release = false;\n  }\n}\n");
     s
 }
 
@@ -99,13 +99,13 @@ fn compiler(out: &Path, runs: usize) -> Result<Json, String> {
     let src = big_source(n);
     let dir = out.join("compiler");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    fs::write(dir.join("bench.frame"), &src).map_err(|e| e.to_string())?;
+    fs::write(dir.join("bench.nari"), &src).map_err(|e| e.to_string())?;
     let p = Project::locate(Some(dir.clone()))?;
     let mut check = Vec::new();
     let mut semantic = None;
     for i in 0..=runs {
         let t = Instant::now();
-        let (c, _) = crate::compile(&src, "bench.frame")
+        let (c, _) = crate::compile(&src, "bench.nari")
             .map_err(|d| format!("1000-action fixture failed to compile: {}", d[0].render()))?;
         let ms = t.elapsed().as_secs_f64() * 1000.0;
         if c.app.actions.len() != n {
@@ -121,7 +121,7 @@ fn compiler(out: &Path, runs: usize) -> Result<Json, String> {
             check.push(ms);
         }
     }
-    let (c, _) = crate::compile(&src, "bench.frame").map_err(|_| "compile failed")?;
+    let (c, _) = crate::compile(&src, "bench.nari").map_err(|_| "compile failed")?;
     let target = "bench/action/a2";
     let mut ctx = Vec::new();
     let mut bytes = 0;
@@ -209,7 +209,7 @@ impl Conn {
 }
 
 fn head(s: &Session, key: Option<&str>) -> String {
-    let mut h = format!("Cookie: {}\r\nX-Frame-CSRF: {}\r\n", s.cookie, s.csrf);
+    let mut h = format!("Cookie: {}\r\nX-Nari-CSRF: {}\r\n", s.cookie, s.csrf);
     if let Some(k) = key {
         h.push_str(&format!("Idempotency-Key: {k}\r\n"));
     }
@@ -322,7 +322,7 @@ fn one_run(
         database: db,
         port: 0,
         log: Some(dir.join(format!("{label}.log"))),
-        env: vec![("FRAME_MUTATIONS_PER_MINUTE".into(), "1000000".into())],
+        env: vec![("NARI_MUTATIONS_PER_MINUTE".into(), "1000000".into())],
         wrapper: Vec::new(),
     })?;
     let (a, b) = launch::dev_sessions(app.port, &app.bootstrap)?;
@@ -407,16 +407,20 @@ fn standalone(out: &Path, name: &str, main_rs: &str, extra_deps: &str) -> Result
     fs::create_dir_all(&crates).map_err(|e| e.to_string())?;
     artifacts::write_file(
         &crates,
-        "frame-runtime/Cargo.toml",
+        "imanari-runtime/Cargo.toml",
         codegen::RUNTIME_MANIFEST,
     )?;
-    artifacts::write_file(&crates, "frame-runtime/src/lib.rs", codegen::RUNTIME_SOURCE)?;
+    artifacts::write_file(
+        &crates,
+        "imanari-runtime/src/lib.rs",
+        codegen::RUNTIME_SOURCE,
+    )?;
     artifacts::write_file(&crates, &format!("{name}/src/main.rs"), main_rs)?;
     artifacts::write_file(
         &crates,
         &format!("{name}/Cargo.toml"),
         format!(
-            "[package]\nname = {name:?}\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[dependencies]\nframe-runtime = {{ path = \"../frame-runtime\" }}\n{extra_deps}\n[workspace]\n"
+            "[package]\nname = {name:?}\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[dependencies]\nimanari-runtime = {{ path = \"../imanari-runtime\" }}\n{extra_deps}\n[workspace]\n"
         ),
     )?;
     artifacts::write_file(
@@ -474,8 +478,8 @@ fn runtime(
     runs: usize,
 ) -> Result<Json, String> {
     let fixture = crate::compile(
-        include_str!("../examples/fieldwork/fieldwork.frame"),
-        "fieldwork.frame",
+        include_str!("../examples/fieldwork/fieldwork.nari"),
+        "fieldwork.nari",
     )
     .map_err(|_| "fixture")?
     .0;
@@ -484,7 +488,7 @@ fn runtime(
             json!({ "status": "not measured", "reason": "the hand-written baseline implements only the Fieldwork reference app; this project's semantics differ" }),
         );
     }
-    let frame_bin = pipeline::build(p, c)
+    let nari_bin = pipeline::build(p, c)
         .map_err(|(_, d)| d.iter().map(|x| x.render()).collect::<Vec<_>>().join("\n"))?
         .binary;
     let base_dir = standalone(out, "fieldwork-baseline", BASELINE_SOURCE, SERDE_DEP)?;
@@ -495,9 +499,9 @@ fn runtime(
     let mut runs_out = Vec::new();
     for i in 0..=runs {
         let order: [(&str, &Path); 2] = if i % 2 == 0 {
-            [("frame", &frame_bin), ("baseline", &base_bin)]
+            [("nari", &nari_bin), ("baseline", &base_bin)]
         } else {
-            [("baseline", &base_bin), ("frame", &frame_bin)]
+            [("baseline", &base_bin), ("nari", &nari_bin)]
         };
         for (label, bin) in order {
             let r = one_run(bin, &dir, label, workers, per_worker)?;
@@ -526,16 +530,16 @@ fn runtime(
             }
             (all, tput, err)
         };
-        let (fa, ft, fe) = collect("frame");
+        let (fa, ft, fe) = collect("nari");
         let (ba, bt, be) = collect("baseline");
         let (fs_, bs) = (stats(&fa), stats(&ba));
         let overhead = fs_["p95"].as_f64().unwrap_or(0.0) / bs["p95"].as_f64().unwrap_or(1.0) - 1.0;
         summary.insert(
             scenario.into(),
             json!({
-                "frame_us": fs_, "baseline_us": bs,
-                "frame_throughput_rps": stats(&ft), "baseline_throughput_rps": stats(&bt),
-                "frame_error_rate_max": fe.iter().cloned().fold(0.0, f64::max), "baseline_error_rate_max": be.iter().cloned().fold(0.0, f64::max),
+                "nari_us": fs_, "baseline_us": bs,
+                "nari_throughput_rps": stats(&ft), "baseline_throughput_rps": stats(&bt),
+                "nari_error_rate_max": fe.iter().cloned().fold(0.0, f64::max), "baseline_error_rate_max": be.iter().cloned().fold(0.0, f64::max),
                 "p95_overhead": overhead, "budget": 0.15, "pass": overhead <= 0.15,
             }),
         );
@@ -547,15 +551,15 @@ fn runtime(
             .filter_map(|r| r["result"]["peak_rss_kb"].as_f64())
             .collect()
     };
-    let (fp, bp) = (stats(&peaks("frame")), stats(&peaks("baseline")));
+    let (fp, bp) = (stats(&peaks("nari")), stats(&peaks("baseline")));
     let mem = fp["max"].as_f64().unwrap_or(0.0) / bp["max"].as_f64().unwrap_or(1.0) - 1.0;
     let raw = dir.join("samples.json");
     fs::write(&raw, ir::canonical_compact(&json!(runs_out))).map_err(|e| e.to_string())?;
     Ok(json!({
-        "baseline": "bench/baseline: hand-written serde-typed handlers on the same frame-runtime (axum/hyper HTTP, SQLite via sqlx, sessions, CSRF/Origin/Host checks, idempotency receipts, revision checks, rate limiting)",
-        "workload": { "workers": workers, "requests_per_worker_per_scenario": per_worker, "connections": "one keep-alive connection per worker", "measured_runs": runs, "warmup_runs": 1, "order": "alternating per run", "seeded_rows_per_user": 50, "rate_limit": "FRAME_MUTATIONS_PER_MINUTE=1000000 for both apps (check still executed)" },
+        "baseline": "bench/baseline: hand-written serde-typed handlers on the same imanari-runtime (axum/hyper HTTP, SQLite via sqlx, sessions, CSRF/Origin/Host checks, idempotency receipts, revision checks, rate limiting)",
+        "workload": { "workers": workers, "requests_per_worker_per_scenario": per_worker, "connections": "one keep-alive connection per worker", "measured_runs": runs, "warmup_runs": 1, "order": "alternating per run", "seeded_rows_per_user": 50, "rate_limit": "NARI_MUTATIONS_PER_MINUTE=1000000 for both apps (check still executed)" },
         "scenarios": summary,
-        "peak_rss_kb": { "frame": fp, "baseline": bp, "overhead": mem, "budget": 0.20, "pass": mem <= 0.20, "method": "ps rss sampled every 50 ms" },
+        "peak_rss_kb": { "nari": fp, "baseline": bp, "overhead": mem, "budget": 0.20, "pass": mem <= 0.20, "method": "ps rss sampled every 50 ms" },
         "raw_samples": raw.strip_prefix(&p.dir).unwrap_or(&raw),
     }))
 }
@@ -621,17 +625,17 @@ fn kernel(c: &Compiled, p: &Project, out: &Path, quick: bool, runs: usize) -> Re
     );
     fs::write(dir.join("kernel.cpp"), cpp).map_err(|e| e.to_string())?;
     let rust = format!(
-        "#![forbid(unsafe_code)]\nuse frame_runtime as rt;\nfn main() {{\n    let args: Vec<String> = std::env::args().collect();\n    let text = std::fs::read_to_string(&args[1]).unwrap();\n    let iters: usize = args[2].parse().unwrap();\n    let recs: Vec<(String, String, i64)> = text.lines().map(|l| {{ let mut p = l.splitn(3, '\\t'); (p.next().unwrap().to_string(), p.next().unwrap().to_string(), p.next().unwrap().parse().unwrap()) }}).collect();\n    let (mut ok, mut bt, mut bi, mut br, mut ov, mut sum) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);\n    let t0 = std::time::Instant::now();\n    for _ in 0..iters {{\n        ok = 0; bt = 0; bi = 0; br = 0; ov = 0; sum = 0;\n        for (title, id, rev) in &recs {{\n            if rt::check_text({}, title, {min}, {max}).is_err() {{ bt += 1; continue; }}\n            if !rt::is_canonical_uuid(id) {{ bi += 1; continue; }}\n            if rev.abs() > rt::MAX_SAFE_INT {{ br += 1; continue; }}\n            if *rev >= rt::MAX_SAFE_INT {{ ov += 1; continue; }}\n            ok += 1;\n            sum = sum.wrapping_add(((rev + 1) as u64).wrapping_mul(31).wrapping_add(title.len() as u64));\n        }}\n    }}\n    let ns = t0.elapsed().as_nanos();\n    println!(\"{{{{\\\"ok\\\":{{ok}},\\\"bad_title\\\":{{bt}},\\\"bad_id\\\":{{bi}},\\\"bad_revision\\\":{{br}},\\\"overflow\\\":{{ov}},\\\"checksum\\\":{{sum}},\\\"ns\\\":{{ns}}}}}}\");\n}}\n",
+        "#![forbid(unsafe_code)]\nuse imanari_runtime as rt;\nfn main() {{\n    let args: Vec<String> = std::env::args().collect();\n    let text = std::fs::read_to_string(&args[1]).unwrap();\n    let iters: usize = args[2].parse().unwrap();\n    let recs: Vec<(String, String, i64)> = text.lines().map(|l| {{ let mut p = l.splitn(3, '\\t'); (p.next().unwrap().to_string(), p.next().unwrap().to_string(), p.next().unwrap().parse().unwrap()) }}).collect();\n    let (mut ok, mut bt, mut bi, mut br, mut ov, mut sum) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);\n    let t0 = std::time::Instant::now();\n    for _ in 0..iters {{\n        ok = 0; bt = 0; bi = 0; br = 0; ov = 0; sum = 0;\n        for (title, id, rev) in &recs {{\n            if rt::check_text({}, title, {min}, {max}).is_err() {{ bt += 1; continue; }}\n            if !rt::is_canonical_uuid(id) {{ bi += 1; continue; }}\n            if rev.abs() > rt::MAX_SAFE_INT {{ br += 1; continue; }}\n            if *rev >= rt::MAX_SAFE_INT {{ ov += 1; continue; }}\n            ok += 1;\n            sum = sum.wrapping_add(((rev + 1) as u64).wrapping_mul(31).wrapping_add(title.len() as u64));\n        }}\n    }}\n    let ns = t0.elapsed().as_nanos();\n    println!(\"{{{{\\\"ok\\\":{{ok}},\\\"bad_title\\\":{{bt}},\\\"bad_id\\\":{{bi}},\\\"bad_revision\\\":{{br}},\\\"overflow\\\":{{ov}},\\\"checksum\\\":{{sum}},\\\"ns\\\":{{ns}}}}}}\");\n}}\n",
         "\"title\""
     );
-    let kernel_dir = standalone(out, "frame-kernel", &rust, "")?;
+    let kernel_dir = standalone(out, "nari-kernel", &rust, "")?;
     let cxx = Command::new("c++")
         .args(["-O3", "-std=c++17", "-o"])
         .arg(dir.join("kernel-cpp"))
         .arg(dir.join("kernel.cpp"))
         .output();
     let cxx_ok = cxx.as_ref().is_ok_and(|o| o.status.success());
-    let rust_bin = cargo_bin(p, &kernel_dir, "frame-kernel")
+    let rust_bin = cargo_bin(p, &kernel_dir, "nari-kernel")
         .map_err(|e| format!("generated Rust kernel failed to build: {e}"))?;
     let iters = if quick { "3" } else { "10" };
     let exec = |bin: &Path| -> Result<Json, String> {
@@ -672,7 +676,7 @@ fn kernel(c: &Compiled, p: &Project, out: &Path, quick: bool, runs: usize) -> Re
         rs_s["median"].as_f64().unwrap_or(0.0) / cpp_s["median"].as_f64().unwrap_or(f64::MAX) - 1.0;
     Ok(json!({
         "workload": format!("{n} records x {iters} iterations: Text[{min}..{max}] scalar-count validation (bounds from IR), canonical UUID check, safe-integer range and checked revision increment, wrapping checksum"),
-        "generated_rust": "kernel emitted from IR bounds calling the same frame-runtime validators the handlers use (check_text allocates an error on failure)",
+        "generated_rust": "kernel emitted from IR bounds calling the same imanari-runtime validators the handlers use (check_text allocates an error on failure)",
         "cxx_flags": "c++ -O3 -std=c++17",
         "outputs": sample_output,
         "outputs_equal": if cxx_ok { json!(outputs_equal) } else { json!("not measured") },
@@ -687,8 +691,8 @@ fn kernel(c: &Compiled, p: &Project, out: &Path, quick: bool, runs: usize) -> Re
 
 fn agent_iteration(p: &Project, c: &Compiled, out: &Path) -> Result<Json, String> {
     let fixture = crate::compile(
-        include_str!("../examples/fieldwork/fieldwork.frame"),
-        "fieldwork.frame",
+        include_str!("../examples/fieldwork/fieldwork.nari"),
+        "fieldwork.nari",
     )
     .map_err(|_| "fixture")?
     .0;
@@ -698,7 +702,7 @@ fn agent_iteration(p: &Project, c: &Compiled, out: &Path) -> Result<Json, String
         );
     }
     let dir = out.join("agent");
-    let fdir = dir.join("frame");
+    let fdir = dir.join("nari");
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(fdir.join("acceptance")).map_err(|e| e.to_string())?;
     let src = fs::read_to_string(&p.file).map_err(|e| e.to_string())?;
@@ -739,12 +743,12 @@ fn agent_iteration(p: &Project, c: &Compiled, out: &Path) -> Result<Json, String
         &testrun::RunOptions {
             binary: &built.binary,
             cwd: &fp.dir,
-            run_dir: &fdir.join(".frame/test"),
+            run_dir: &fdir.join(".nari/test"),
             wrapper: Vec::new(),
         },
         true,
     )?;
-    let frame_elapsed = t0.elapsed().as_secs_f64();
+    let nari_elapsed = t0.elapsed().as_secs_f64();
     task.completed.push("edited create_task input bound".into());
     task.base_source_sha256 = cand.source_sha256.clone();
     task.base_graph_sha256 = cand.graph_sha256.clone();
@@ -780,14 +784,14 @@ fn agent_iteration(p: &Project, c: &Compiled, out: &Path) -> Result<Json, String
     let base_elapsed = t1.elapsed().as_secs_f64();
     Ok(json!({
         "change": "tighten create_task title max_length 200 -> 120",
-        "frame": {
+        "nari": {
             "context_bytes": bundle.markdown.len(),
             "changed_source_bytes": 3,
             "checks_run": run.results.len() + 2,
-            "checks": "frame check, frame diff, generated contract checks, protected tests",
+            "checks": "nari check, nari diff, generated contract checks, protected tests",
             "failures": run.results.iter().filter(|r| !r.passed).count(),
             "diff_categories": d["summary"],
-            "elapsed_s": frame_elapsed,
+            "elapsed_s": nari_elapsed,
             "fresh_session_continuation": if resumed.is_empty() { "verified: task record hashes and evidence match" } else { "drift detected" },
         },
         "baseline": {
@@ -827,7 +831,7 @@ pub fn run(p: &Project, c: &Compiled, o: &Options) -> Result<Json, String> {
     budgets.push(json!({ "budget": "runtime peak memory overhead <= 20%", "result": budget(&runtime["peak_rss_kb"]["pass"]), "measured": runtime["peak_rss_kb"]["overhead"] }));
     budgets.push(json!({ "budget": "generated Rust kernel within 20% of optimized C++", "result": budget(&kernel["pass"]), "measured": kernel["rust_vs_cpp"] }));
     let report = json!({
-        "schema": "frame-bench/0.1",
+        "schema": "nari-bench/0.1",
         "quick": o.quick,
         "machine": machine(),
         "budgets": budgets,

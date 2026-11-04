@@ -1,10 +1,10 @@
-# Contributing to Frame
+# Contributing to Imanari
 
-Thanks for taking the time to help. Frame is a 0.1 developer preview, so the language, the runtime interface and the CLI can still change between releases.
+Thanks for taking the time to help. Imanari is a 0.1 developer preview, so the language, the runtime interface and the CLI can still change between releases.
 
 ## Before you start
 
-- For bugs, open an issue with the `.frame` source (or the smallest part that reproduces it), the command you ran, and the full diagnostic or JSON output.
+- For bugs, open an issue with the `.nari` source (or the smallest part that reproduces it), the command you ran, and the full diagnostic or JSON output.
 - For language or runtime changes, open an issue first. [docs/spec.md](docs/spec.md) is the normative contract, so a change that alters accepted syntax, generated behavior, or a security property needs a decision record in [docs/decisions.md](docs/decisions.md) that states its acceptance impact.
 - Unsupported features must keep failing with an explicit diagnostic. Please don't add placeholder behavior that silently does something else.
 
@@ -19,9 +19,9 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-The test suites build real generated apps into `target/frame-apps` and talk to them over HTTP. The first run compiles Axum, SQLx and Tokio in release mode and takes a few minutes. Isolated repair tests need macOS (Seatbelt) and are reported as ignored on other platforms. The browser journey test runs when Node 22+ and a Chromium are available, and otherwise prints `BROWSER_UNAVAILABLE` and skips.
+The test suites build real generated apps into `target/nari-apps` and talk to them over HTTP. The first run compiles Axum, SQLx and Tokio in release mode and takes a few minutes. Isolated repair tests need macOS (Seatbelt) and are reported as ignored on other platforms. The browser journey test runs when Node 22+ and a Chromium are available, and otherwise prints `BROWSER_UNAVAILABLE` and skips.
 
-If you change benchmark-sensitive code in `runtime/` or `src/codegen.rs`, run `target/release/frame --project examples/fieldwork bench` and include the summary in your pull request. For changes to acceptance behavior, run `scripts/collect-evidence.sh` as well.
+If you change benchmark-sensitive code in `runtime/` or `src/codegen.rs`, run `target/release/nari --project examples/fieldwork bench` and include the summary in your pull request. For changes to acceptance behavior, run `scripts/collect-evidence.sh` as well.
 
 ## Code guidelines
 
@@ -38,4 +38,4 @@ If you change benchmark-sensitive code in `runtime/` or `src/codegen.rs`, run `t
 
 ## License
 
-Unless you explicitly state otherwise, any contribution you intentionally submit for inclusion in Frame, as defined in the Apache-2.0 license, is dual-licensed under MIT and Apache-2.0, without any additional terms or conditions.
+Unless you explicitly state otherwise, any contribution you intentionally submit for inclusion in Imanari, as defined in the Apache-2.0 license, is dual-licensed under MIT and Apache-2.0, without any additional terms or conditions.

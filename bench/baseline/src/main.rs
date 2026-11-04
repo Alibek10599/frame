@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use frame_runtime as rt;
+use imanari_runtime as rt;
 use rt::serde_json::{self, Value};
 use rt::sqlx::{self, Row, sqlite::SqliteRow};
 use serde::{Deserialize, Serialize};
@@ -144,7 +144,7 @@ static SPEC: rt::AppSpec = rt::AppSpec {
         "CREATE INDEX \"entity_Task_owner\" ON \"entity_Task\" (\"owner\", \"id\")",
     ],
     schema_fingerprint: "fieldwork-baseline-v1",
-    database: ".frame/baseline.db",
+    database: ".nari/baseline.db",
     port: 7332,
     request_limit_bytes: 65536,
     request_timeout_ms: 5000,

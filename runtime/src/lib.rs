@@ -25,7 +25,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard, Semaphore, watch};
 
-pub const RUNTIME_INTERFACE: &str = "frame-runtime/0.1";
+pub const RUNTIME_INTERFACE: &str = "imanari-runtime/0.1";
 pub const MAX_SAFE_INT: i64 = 9_007_199_254_740_991;
 pub const EXIT_CONFIG: u8 = 77;
 pub const EXIT_MIGRATION_REQUIRED: u8 = 78;
@@ -122,7 +122,7 @@ impl From<sqlx::Error> for ApiError {
 }
 
 fn log(msg: &str) {
-    let _ = writeln!(std::io::stderr(), "[frame-app] {msg}");
+    let _ = writeln!(std::io::stderr(), "[nari-app] {msg}");
 }
 
 pub fn random_hex(bytes: usize) -> String {
@@ -404,7 +404,7 @@ impl Ctx {
         let writer = self.shared.writer.clone().lock_owned().await;
         let mut tx = self.shared.db.begin_with("BEGIN IMMEDIATE").await?;
         let found: Option<(String, String)> = sqlx::query_as(
-            "SELECT \"input_sha256\", \"response\" FROM \"_frame_receipts\" WHERE \"actor\" = ?1 AND \"action\" = ?2 AND \"key\" = ?3",
+            "SELECT \"input_sha256\", \"response\" FROM \"_nari_receipts\" WHERE \"actor\" = ?1 AND \"action\" = ?2 AND \"key\" = ?3",
         )
         .bind(self.actor)
         .bind(self.action)
@@ -434,7 +434,7 @@ impl Ctx {
     pub async fn commit_mutation(&self, mut tx: Tx, data: Value) -> Result<Value, ApiError> {
         let key = self.key.as_deref().unwrap_or_default();
         sqlx::query(
-            "INSERT INTO \"_frame_receipts\" (\"actor\", \"action\", \"key\", \"input_sha256\", \"response\", \"created_ms\") VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO \"_nari_receipts\" (\"actor\", \"action\", \"key\", \"input_sha256\", \"response\", \"created_ms\") VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         )
         .bind(self.actor)
         .bind(self.action)
@@ -593,7 +593,7 @@ impl Shared {
     fn actor(&self, h: &HeaderMap) -> Result<&'static str, ApiError> {
         let mut auth = self.auth.lock().expect("auth lock");
         let s = self
-            .session(&mut auth, h, "frame_session")
+            .session(&mut auth, h, "nari_session")
             .filter(|s| !s.controller)
             .ok_or_else(|| {
                 ApiError::new(
@@ -602,12 +602,12 @@ impl Shared {
                     "sign in through the local development bootstrap",
                 )
             })?;
-        let csrf = header_str(h, "x-frame-csrf").unwrap_or_default();
+        let csrf = header_str(h, "x-nari-csrf").unwrap_or_default();
         if !same(csrf, &s.csrf) {
             return Err(ApiError::new(
                 403,
                 "FORBIDDEN",
-                "missing or invalid X-Frame-CSRF header",
+                "missing or invalid X-Nari-CSRF header",
             ));
         }
         s.actor
@@ -790,9 +790,9 @@ async fn bootstrap_route(
         let user = auth.user_tokens[0].clone();
         let mut resp = json_response(200, json!({ "data": { "ok": true }, "request_id": rid }));
         resp.headers_mut()
-            .append(header::SET_COOKIE, session_cookie("frame_dev", &controller));
+            .append(header::SET_COOKIE, session_cookie("nari_dev", &controller));
         resp.headers_mut()
-            .append(header::SET_COOKIE, session_cookie("frame_session", &user));
+            .append(header::SET_COOKIE, session_cookie("nari_session", &user));
         Ok(resp)
     }
     .await;
@@ -807,7 +807,7 @@ async fn select_route(State(app): State<Arc<Shared>>, headers: HeaderMap, body: 
         {
             let mut auth = app.auth.lock().expect("auth lock");
             let s = app
-                .session(&mut auth, &headers, "frame_dev")
+                .session(&mut auth, &headers, "nari_dev")
                 .filter(|s| s.controller)
                 .ok_or_else(|| {
                     ApiError::new(
@@ -817,13 +817,13 @@ async fn select_route(State(app): State<Arc<Shared>>, headers: HeaderMap, body: 
                     )
                 })?;
             if !same(
-                header_str(&headers, "x-frame-csrf").unwrap_or_default(),
+                header_str(&headers, "x-nari-csrf").unwrap_or_default(),
                 &s.csrf,
             ) {
                 return Err(ApiError::new(
                     403,
                     "FORBIDDEN",
-                    "missing or invalid X-Frame-CSRF header",
+                    "missing or invalid X-Nari-CSRF header",
                 ));
             }
         }
@@ -836,7 +836,7 @@ async fn select_route(State(app): State<Arc<Shared>>, headers: HeaderMap, body: 
         let token = app.auth.lock().expect("auth lock").user_tokens[idx].clone();
         let mut resp = json_response(200, json!({ "data": { "user": user }, "request_id": rid }));
         resp.headers_mut()
-            .append(header::SET_COOKIE, session_cookie("frame_session", &token));
+            .append(header::SET_COOKIE, session_cookie("nari_session", &token));
         Ok(resp)
     }
     .await;
@@ -850,14 +850,14 @@ async fn session_route(State(app): State<Arc<Shared>>, headers: HeaderMap) -> Re
     }
     let mut auth = app.auth.lock().expect("auth lock");
     let user = app
-        .session(&mut auth, &headers, "frame_session")
+        .session(&mut auth, &headers, "nari_session")
         .filter(|s| !s.controller)
         .map(|s| {
             let (label, id) = s.actor.unwrap_or(("", ""));
             json!({ "id": id, "label": label, "csrf": s.csrf })
         });
     let dev = app
-        .session(&mut auth, &headers, "frame_dev")
+        .session(&mut auth, &headers, "nari_dev")
         .filter(|s| s.controller)
         .map(|s| {
             let users: Vec<Value> = SEEDED_USERS
@@ -897,7 +897,7 @@ async fn health_route(State(app): State<Arc<Shared>>, headers: HeaderMap) -> Res
 
 async fn shutdown_route(State(app): State<Arc<Shared>>, headers: HeaderMap) -> Response {
     let rid = new_uuid();
-    let token = header_str(&headers, "x-frame-owner").unwrap_or_default();
+    let token = header_str(&headers, "x-nari-owner").unwrap_or_default();
     let ok = app.guard(&headers, true).is_ok()
         && app.owner_token.as_deref().is_some_and(|t| same(t, token));
     if !ok {
@@ -956,26 +956,25 @@ pub struct Config {
 
 impl Config {
     pub fn from_env(spec: &AppSpec) -> Result<Config, String> {
-        let database =
-            std::env::var("FRAME_DATABASE").unwrap_or_else(|_| spec.database.to_string());
-        let port = match std::env::var("FRAME_PORT") {
-            Ok(p) => p.parse().map_err(|_| format!("invalid FRAME_PORT '{p}'"))?,
+        let database = std::env::var("NARI_DATABASE").unwrap_or_else(|_| spec.database.to_string());
+        let port = match std::env::var("NARI_PORT") {
+            Ok(p) => p.parse().map_err(|_| format!("invalid NARI_PORT '{p}'"))?,
             Err(_) => spec.port,
         };
         Ok(Config {
             database: PathBuf::from(database),
             port,
-            owner_token: std::env::var("FRAME_OWNER_TOKEN")
+            owner_token: std::env::var("NARI_OWNER_TOKEN")
                 .ok()
                 .filter(|t| !t.is_empty()),
-            supervised: std::env::var("FRAME_SUPERVISED").is_ok_and(|v| v == "1"),
-            fault: std::env::var("FRAME_FAULT").ok().filter(|f| !f.is_empty()),
-            mutations_per_minute: match std::env::var("FRAME_MUTATIONS_PER_MINUTE") {
+            supervised: std::env::var("NARI_SUPERVISED").is_ok_and(|v| v == "1"),
+            fault: std::env::var("NARI_FAULT").ok().filter(|f| !f.is_empty()),
+            mutations_per_minute: match std::env::var("NARI_MUTATIONS_PER_MINUTE") {
                 Ok(v) => v
                     .parse()
                     .ok()
                     .filter(|n| (1..=MAX_MUTATIONS_PER_MINUTE).contains(n))
-                    .ok_or_else(|| format!("invalid FRAME_MUTATIONS_PER_MINUTE '{v}'"))?,
+                    .ok_or_else(|| format!("invalid NARI_MUTATIONS_PER_MINUTE '{v}'"))?,
                 Err(_) => MUTATIONS_PER_MINUTE,
             },
         })
@@ -989,7 +988,7 @@ fn parse_fault(f: &str) -> Result<Option<(FaultPoint, String)>, String> {
         "crash_after_commit" => FaultPoint::AfterCommit,
         "crash_on_request" => FaultPoint::OnRequest,
         "crash_on_start" => return Ok(None),
-        _ => return Err(format!("unknown FRAME_FAULT '{f}'")),
+        _ => return Err(format!("unknown NARI_FAULT '{f}'")),
     };
     Ok(Some((p, action.to_string())))
 }
@@ -1052,7 +1051,7 @@ pub async fn open_database(
         let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
     }
     let has_meta: Option<String> = sqlx::query_scalar(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_frame_meta'",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_nari_meta'",
     )
     .fetch_optional(&pool)
     .await?;
@@ -1063,20 +1062,20 @@ pub async fn open_database(
                 .await?;
         if existed && tables > 0 {
             return Err(OpenError::MigrationRequired(
-                "database contains tables but no Frame schema fingerprint".into(),
+                "database contains tables but no Imanari schema fingerprint".into(),
             ));
         }
         let mut tx = pool.begin_with("BEGIN IMMEDIATE").await?;
-        sqlx::query("CREATE TABLE \"_frame_meta\" (\"key\" TEXT PRIMARY KEY NOT NULL, \"value\" TEXT NOT NULL) STRICT")
+        sqlx::query("CREATE TABLE \"_nari_meta\" (\"key\" TEXT PRIMARY KEY NOT NULL, \"value\" TEXT NOT NULL) STRICT")
             .execute(&mut *tx)
             .await?;
-        sqlx::query("CREATE TABLE \"_frame_receipts\" (\"actor\" TEXT NOT NULL, \"action\" TEXT NOT NULL, \"key\" TEXT NOT NULL, \"input_sha256\" TEXT NOT NULL, \"response\" TEXT NOT NULL, \"created_ms\" INTEGER NOT NULL, PRIMARY KEY (\"actor\", \"action\", \"key\")) STRICT")
+        sqlx::query("CREATE TABLE \"_nari_receipts\" (\"actor\" TEXT NOT NULL, \"action\" TEXT NOT NULL, \"key\" TEXT NOT NULL, \"input_sha256\" TEXT NOT NULL, \"response\" TEXT NOT NULL, \"created_ms\" INTEGER NOT NULL, PRIMARY KEY (\"actor\", \"action\", \"key\")) STRICT")
             .execute(&mut *tx)
             .await?;
         for stmt in spec.schema {
             sqlx::query(stmt).execute(&mut *tx).await?;
         }
-        sqlx::query("INSERT INTO \"_frame_meta\" (\"key\", \"value\") VALUES ('schema_fingerprint', ?1), ('app', ?2)")
+        sqlx::query("INSERT INTO \"_nari_meta\" (\"key\", \"value\") VALUES ('schema_fingerprint', ?1), ('app', ?2)")
             .bind(spec.schema_fingerprint)
             .bind(spec.name)
             .execute(&mut *tx)
@@ -1085,7 +1084,7 @@ pub async fn open_database(
         return Ok(pool);
     }
     let stored: Option<String> = sqlx::query_scalar(
-        "SELECT \"value\" FROM \"_frame_meta\" WHERE \"key\" = 'schema_fingerprint'",
+        "SELECT \"value\" FROM \"_nari_meta\" WHERE \"key\" = 'schema_fingerprint'",
     )
     .fetch_optional(&pool)
     .await?;
@@ -1139,7 +1138,7 @@ async fn serve(spec: &'static AppSpec) -> ExitCode {
         Err(OpenError::MigrationRequired(m)) => {
             log(&format!("MIGRATION_REQUIRED: {m}"));
             println!(
-                "FRAME_STOP {}",
+                "NARI_STOP {}",
                 json!({ "reason": "MIGRATION_REQUIRED", "message": m })
             );
             return ExitCode::from(EXIT_MIGRATION_REQUIRED);
@@ -1206,11 +1205,11 @@ async fn serve(spec: &'static AppSpec) -> ExitCode {
     });
     let router = Router::new()
         .route("/api/actions/{name}", post(action_route))
-        .route("/_frame/bootstrap", post(bootstrap_route))
-        .route("/_frame/dev/select", post(select_route))
-        .route("/_frame/session", get(session_route))
-        .route("/_frame/health", get(health_route))
-        .route("/_frame/control/shutdown", post(shutdown_route))
+        .route("/_nari/bootstrap", post(bootstrap_route))
+        .route("/_nari/dev/select", post(select_route))
+        .route("/_nari/session", get(session_route))
+        .route("/_nari/health", get(health_route))
+        .route("/_nari/control/shutdown", post(shutdown_route))
         .fallback(static_route)
         .with_state(shared.clone());
     if cfg.supervised {
@@ -1245,9 +1244,9 @@ async fn serve(spec: &'static AppSpec) -> ExitCode {
             }
         });
     }
-    println!("FRAME_BOOTSTRAP http://127.0.0.1:{port}/#bootstrap={bootstrap}");
+    println!("NARI_BOOTSTRAP http://127.0.0.1:{port}/#bootstrap={bootstrap}");
     println!(
-        "FRAME_READY {}",
+        "NARI_READY {}",
         json!({ "port": port, "instance": shared.instance, "pid": std::process::id(), "source_sha256": spec.source_sha256 })
     );
     let _ = std::io::stdout().flush();

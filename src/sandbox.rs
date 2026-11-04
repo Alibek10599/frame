@@ -43,7 +43,7 @@ pub struct Sandbox {
     pub workspace: PathBuf,
     pub protected: PathBuf,
     pub denied_reads: Vec<PathBuf>,
-    pub frame_exe: PathBuf,
+    pub nari_exe: PathBuf,
 }
 
 #[derive(Clone, Debug)]
@@ -96,7 +96,7 @@ impl Sandbox {
             SANDBOX_EXEC.into(),
             "-p".into(),
             self.profile(phase),
-            self.frame_exe.to_string_lossy().into_owned(),
+            self.nari_exe.to_string_lossy().into_owned(),
             "__limit".into(),
             "--cpu".into(),
             l.cpu_seconds.to_string(),
@@ -145,10 +145,10 @@ pub fn default_denied_reads(project_dir: &Path, database: &str) -> Vec<PathBuf> 
         }
     }
     for rel in [
-        ".frame/control.db",
-        ".frame/control.db-wal",
-        ".frame/control.db-shm",
-        ".frame/run",
+        ".nari/control.db",
+        ".nari/control.db-wal",
+        ".nari/control.db-shm",
+        ".nari/run",
     ] {
         v.push(project_dir.join(rel));
     }
@@ -207,12 +207,12 @@ pub fn run_with_timeout(cmd: &mut Command, wall: Duration) -> Result<std::proces
 }
 
 pub fn detect(sandbox: Sandbox) -> Isolation {
-    if std::env::var("FRAME_SANDBOX").is_ok_and(|v| v == "none") {
-        return Isolation::Unavailable("disabled by FRAME_SANDBOX=none".into());
+    if std::env::var("NARI_SANDBOX").is_ok_and(|v| v == "none") {
+        return Isolation::Unavailable("disabled by NARI_SANDBOX=none".into());
     }
     if !cfg!(target_os = "macos") {
         return Isolation::Unavailable(
-            "no supported OS sandbox on this platform (Frame 0.1 uses macOS Seatbelt)".into(),
+            "no supported OS sandbox on this platform (Imanari 0.1 uses macOS Seatbelt)".into(),
         );
     }
     if !Path::new(SANDBOX_EXEC).exists() {
@@ -227,7 +227,7 @@ pub fn detect(sandbox: Sandbox) -> Isolation {
 fn probe(sb: &Sandbox, phase: Phase, args: &[String]) -> Result<bool, String> {
     let mut cmd = sb.command(
         phase,
-        &sb.frame_exe,
+        &sb.nari_exe,
         &["__probe".to_string()]
             .into_iter()
             .chain(args.iter().cloned())

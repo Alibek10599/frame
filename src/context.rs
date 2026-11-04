@@ -33,7 +33,7 @@ fn source_block(c: &Compiled, src: &str, id: &str) -> Option<String> {
     let (l1, l2) = line_range(src, span.start, span.end);
     let text = src.get(span.start..span.end)?;
     Some(format!(
-        "`{}` bytes {}..{} (lines {l1}-{l2}):\n\n```frame\n{text}\n```\n",
+        "`{}` bytes {}..{} (lines {l1}-{l2}):\n\n```imanari\n{text}\n```\n",
         c.file, span.start, span.end
     ))
 }
@@ -309,7 +309,7 @@ pub fn extract(
             .collect();
         if !rows.is_empty() {
             let body = format!(
-                "Observed in `.frame/test/report.json` ({}):\n\n{}\n",
+                "Observed in `.nari/test/report.json` ({}):\n\n{}\n",
                 if fresh {
                     "matches current source"
                 } else {
@@ -345,7 +345,7 @@ pub fn extract(
 
     let header = |hashes: &Json| {
         let mut h = format!(
-            "# Context: {target}\n\nFrame context 0.1. A bounded snapshot for this node, not a claim of complete understanding. Labels: *requirement* = declared source or protected test; *inference* = compiler-derived; *observed* = recorded run evidence; *historical* = past incident outcome.\n\n## Hashes\n\n"
+            "# Context: {target}\n\nImanari context 0.1. A bounded snapshot for this node, not a claim of complete understanding. Labels: *requirement* = declared source or protected test; *inference* = compiler-derived; *observed* = recorded run evidence; *historical* = past incident outcome.\n\n## Hashes\n\n"
         );
         for (k, v) in hashes.as_object().into_iter().flatten() {
             h.push_str(&format!("- {k}: `{}`\n", v.as_str().unwrap_or_default()));
@@ -364,7 +364,7 @@ pub fn extract(
     for s in &sections {
         let chunk = format!("\n## {} — {} ({})\n\n{}", s.id, s.kind, s.reason, s.body);
         if !s.required && md.len() + chunk.len() + 2048 > max_bytes {
-            omitted_optional.push(json!({ "id": s.id, "kind": s.kind, "reason": "optional content omitted to respect the byte budget", "expand": format!("frame context {target} --max-bytes {}", max_bytes * 2) }));
+            omitted_optional.push(json!({ "id": s.id, "kind": s.kind, "reason": "optional content omitted to respect the byte budget", "expand": format!("nari context {target} --max-bytes {}", max_bytes * 2) }));
             continue;
         }
         if s.required || !over_budget {
@@ -382,7 +382,7 @@ pub fn extract(
                 && !n.id.starts_with(&format!("{target}/"))
         })
         .filter(|n| matches!(n.kind.as_str(), "action" | "entity" | "screen" | "identity" | "recovery" | "repair" | "runtime"))
-        .map(|n| json!({ "id": n.id, "kind": n.kind, "reason": "not a direct dependency, consumer, or applicable policy", "expand": format!("frame context {}", n.id) }))
+        .map(|n| json!({ "id": n.id, "kind": n.kind, "reason": "not a direct dependency, consumer, or applicable policy", "expand": format!("nari context {}", n.id) }))
         .collect();
     omitted.extend(omitted_optional);
     md.push_str("\n## Omitted\n\n");
@@ -424,7 +424,7 @@ pub fn extract(
         by_role.entry(role).or_default().push(&s.id);
     }
     let manifest = json!({
-        "schema": "frame-context/0.1",
+        "schema": "nari-context/0.1",
         "target": target,
         "kind": kind,
         "status": if over_budget { "CONTEXT_BUDGET_EXCEEDED" } else { "ok" },
