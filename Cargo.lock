@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "fieldwork-baseline"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "imanari-runtime",
  "serde",
@@ -683,7 +683,7 @@ dependencies = [
 
 [[package]]
 name = "imanari"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "getrandom",
@@ -697,7 +697,7 @@ dependencies = [
 
 [[package]]
 name = "imanari-runtime"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "axum",
  "getrandom",
